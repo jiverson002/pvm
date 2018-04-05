@@ -82,7 +82,7 @@ static inline int read(char const * const filename) {
   OK(ret);
 
   for (int i=0,j=0; i < len; i+=3,j++) {
-    MEM[j] = a2x(buf[i+0]) * 16 + a2x(buf[i+1]);
+    Mem[j] = a2x(buf[i+0]) * 16 + a2x(buf[i+1]);
   }
 
   free(buf);
@@ -103,8 +103,8 @@ int main(int argc, char **argv) {
 
   for (;;) {
     // fetch instruction specifier
-    IN_SPEC = MEM[PC];
-    //printf("%.4X  %.2X", PC, IN_SPEC);
+    InSpec = Mem[PC];
+    //printf("%.4X  %.2X", PC, InSpec);
 
     // increment pc
     PC++;
@@ -113,10 +113,10 @@ int main(int argc, char **argv) {
     // NOOP
 
     // if non-unary
-    if (is_nonunary(IN_SPEC)) {
+    if (is_nonunary(InSpec)) {
       // fetch operand specifier
-      OP_SPEC = LDW(PC);
-      //printf(" %.4X", OP_SPEC);
+      OpSpec = LDW(PC);
+      //printf(" %.4X", OpSpec);
 
       // increment pc
       PC += 2;
@@ -124,14 +124,14 @@ int main(int argc, char **argv) {
     //printf("\n");
 
     // execute
-    if (0x00 == IN_SPEC) {
+    if (0x00 == InSpec) {
       break;
     }
-    ops[IN_SPEC](IN_SPEC, OP_SPEC);
+    ops[InSpec](InSpec, OpSpec);
   }
 
   //for (int i = 0; i < 32; i++) {
-  //  printf("%.2X ", MEM[i]);
+  //  printf("%.2X ", Mem[i]);
   //}
   //printf("\n");
 
