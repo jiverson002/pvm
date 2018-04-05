@@ -1,5 +1,3 @@
-#include <assert.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -8,10 +6,6 @@
 #include "vm.h"
 
 #define OK(err) if (err) { printf("notok@%d\n", __LINE__); goto notok; }
-
-static inline bool is_nonunary(byte in_spec) {
-  return !(((in_spec) < 0x12) || (((in_spec) | 0x01) == 0x27));
-}
 
 static inline byte a2x(byte a) {
   switch (a) {
@@ -43,22 +37,16 @@ static inline byte a2x(byte a) {
     case 'F':
       return a - 65 + 10;
 
-    case 'z':
-      return 0;
-
     default:
-      assert(false);
+      return 0;
   }
 }
 
-static inline int read(char const * const filename) {
+static int read(char const * const filename) {
   int ret;
   FILE *file;
-  char *buf;
+  char *buf=NULL;
   long len, num;
-
-  /* FIXME make this a compile time assertion */
-  assert(sizeof(uint8_t) == sizeof(char));
 
   file = fopen(filename, "rb");
   OK(NULL == file);
@@ -90,6 +78,8 @@ static inline int read(char const * const filename) {
   return 0;
 
 notok:
+  free(buf);
+
   return -1;
 }
 
@@ -99,12 +89,16 @@ int main(int argc, char **argv) {
   ret = read(argv[1]);
   OK(ret);
 
+  A  = 0;
+  X  = 0;
+  PC = 0;
   SP = SP_INIT;
+  InSpec = 0;
+  OpSpec = 0;
 
   for (;;) {
     // fetch instruction specifier
     InSpec = Mem[PC];
-    //printf("%.4X  %.2X", PC, InSpec);
 
     // increment pc
     PC++;
@@ -116,12 +110,10 @@ int main(int argc, char **argv) {
     if (is_nonunary(InSpec)) {
       // fetch operand specifier
       OpSpec = LDW(PC);
-      //printf(" %.4X", OpSpec);
 
       // increment pc
       PC += 2;
     }
-    //printf("\n");
 
     // execute
     if (0x00 == InSpec) {
@@ -129,11 +121,6 @@ int main(int argc, char **argv) {
     }
     ops[InSpec](InSpec, OpSpec);
   }
-
-  //for (int i = 0; i < 32; i++) {
-  //  printf("%.2X ", Mem[i]);
-  //}
-  //printf("\n");
 
   return EXIT_SUCCESS;
 

@@ -2,6 +2,7 @@
 #define OPS_H 1
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 
 #include "os.h"
@@ -10,6 +11,10 @@
 
 #define LDW(idx) (((word)Mem[(idx)] << 8) | (word)Mem[(idx) + 1])
 #define STW(idx, w) (Mem[idx + 0] = (w) >> 8, Mem[idx + 1] = (w) & 0x00ff)
+
+static inline bool is_nonunary(byte in_spec) {
+  return !(((in_spec) < 0x12) || (((in_spec) | 0x01) == 0x27));
+}
 
 static inline byte get_reg(byte inspec) {
   if (0x06 <= inspec && inspec <= 0x11) {
@@ -23,7 +28,7 @@ static inline byte get_reg(byte inspec) {
 static inline word get_addr(byte inspec, word opspec) {
   word op_addr;
 
-  switch (inspec & 0x03) {
+  switch (inspec & 0x07) {
     case 0x01:  /* direct */
       op_addr = opspec;
       break;
@@ -45,10 +50,6 @@ static inline word get_addr(byte inspec, word opspec) {
     case 0x07:  /* stack-deferred indexed */
       op_addr = LDW(SP + opspec) + X;
       break;
-      break;
-    default:    /* error */
-      assert(0);
-      break;
   }
 
   return op_addr;
@@ -68,7 +69,7 @@ static inline word get_oprnd(byte inspec, word opspec) {
         break;
     }
   } else {
-    switch (inspec & 0x03) {
+    switch (inspec & 0x07) {
       case 0x00:  /* immediate */
         oprnd = opspec;
         break;
@@ -389,6 +390,34 @@ static void ADDr(byte inspec, word opspec) {
   NZVC |= (w < o);            /* C */
 }
 
+static void SUBr(byte inspec, word opspec) {
+  word o, w, v;
+  word oprnd = ~get_oprnd(inspec, opspec) + 1;
+
+  switch (get_reg(inspec)) {
+    case 0x00:  /* accumulator */
+      o = A;
+      w = A += oprnd;
+      break;
+    case 0x01:  /* index */
+      o = X;
+      w = X += oprnd;
+      break;
+  }
+
+  /* Inspect the signs of the numbers and the sum. If you add numbers with
+   * different signs, you cannot have an overflow. If you add two numbers with
+   * the same sign and the result is not the same sign, then you have signed
+   * overflow. */
+  v = !((o & 0x8000) ^ (oprnd & 0x8000)) && ((o & 0x8000) ^ (w & 0x8000));
+
+  NZVC = 0;                   /* clear all bits */
+  NZVC |= (w & 0x8000) >> 12; /* N */
+  NZVC |= (w == 0) << 2;      /* Z */
+  NZVC |= v << 1;             /* V */
+  NZVC |= (w < o);            /* C */
+}
+
 static void ANDr(byte inspec, word opspec) {
   word w;
   word oprnd = get_oprnd(inspec, opspec);
@@ -425,6 +454,34 @@ static void ORr(byte inspec, word opspec) {
   NZVC |= (w == 0) << 2;      /* Z */
 }
 
+static void CPWr(byte inspec, word opspec) {
+  word o, w, v;
+  word oprnd = ~get_oprnd(inspec, opspec) + 1;
+
+  switch (get_reg(inspec)) {
+    case 0x00:  /* accumulator */
+      o = A;
+      w = A + oprnd;
+      break;
+    case 0x01:  /* index */
+      o = X;
+      w = X + oprnd;
+      break;
+  }
+
+  /* Inspect the signs of the numbers and the sum. If you add numbers with
+   * different signs, you cannot have an overflow. If you add two numbers with
+   * the same sign and the result is not the same sign, then you have signed
+   * overflow. */
+  v = !((o & 0x8000) ^ (oprnd & 0x8000)) && ((o & 0x8000) ^ (w & 0x8000));
+
+  NZVC = 0;                   /* clear all bits */
+  NZVC |= (w & 0x8000) >> 12; /* N */
+  NZVC |= (w == 0) << 2;      /* Z */
+  NZVC |= v << 1;             /* V */
+  NZVC |= (w < o);            /* C */
+}
+
 static void (*ops[256])(byte, word) = {
   /* STOP */    NULL,
   /* RET */     RET,
@@ -458,14 +515,14 @@ static void (*ops[256])(byte, word) = {
   /* SUBSP */   SUBSP, SUBSP, SUBSP, SUBSP, SUBSP, SUBSP, SUBSP,
   /* ADDr */    ADDr, ADDr, ADDr, ADDr, ADDr, ADDr, ADDr, ADDr,
                 ADDr, ADDr, ADDr, ADDr, ADDr, ADDr, ADDr, ADDr,
-  /* SUBr */    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-                NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  /* SUBr */    SUBr, SUBr, SUBr, SUBr, SUBr, SUBr, SUBr, SUBr,
+                SUBr, SUBr, SUBr, SUBr, SUBr, SUBr, SUBr, SUBr,
   /* ANDr */    ANDr, ANDr, ANDr, ANDr, ANDr, ANDr, ANDr, ANDr,
                 ANDr, ANDr, ANDr, ANDr, ANDr, ANDr, ANDr, ANDr,
   /* ORr */     ORr, ORr, ORr, ORr, ORr, ORr, ORr, ORr,
                 ORr, ORr, ORr, ORr, ORr, ORr, ORr, ORr,
-  /* CPWr */    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-                NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  /* CPWr */    CPWr, CPWr, CPWr, CPWr, CPWr, CPWr, CPWr, CPWr,
+                CPWr, CPWr, CPWr, CPWr, CPWr, CPWr, CPWr, CPWr,
   /* CPBr */    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                 NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* LDWr */    LDWr, LDWr, LDWr, LDWr, LDWr, LDWr, LDWr, LDWr,
