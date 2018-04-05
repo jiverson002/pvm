@@ -1,6 +1,9 @@
 #ifndef OPS_H
 #define OPS_H 1
 
+#include <assert.h>
+#include <stdio.h>
+
 #include "os.h"
 #include "types.h"
 #include "vm.h"
