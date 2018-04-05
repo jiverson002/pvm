@@ -84,9 +84,93 @@ static inline word get_oprnd(byte in_spec, word op_spec) {
   return oprnd;
 }
 
+static inline void RET(byte in_spec, word op_spec) {
+  PC = LDW(SP);
+  SP += 2;
+
+  (void)in_spec;
+  (void)op_spec;
+}
+
+static inline void MOVSPA(byte in_spec, word op_spec) {
+  A = SP;
+
+  (void)in_spec;
+  (void)op_spec;
+}
+
+static inline void MOVFLGA(byte in_spec, word op_spec) {
+  A &= 0xfff0; /* clear A<12..15> */
+  A |= NZVC;
+
+  (void)in_spec;
+  (void)op_spec;
+}
+
+static inline void MOVAFLG(byte in_spec, word op_spec) {
+  NZVC = A & 0x000f;
+
+  (void)in_spec;
+  (void)op_spec;
+}
+
 static inline void BR(byte in_spec, word op_spec) {
-  word oprnd = get_oprnd(in_spec, op_spec);
-  PC = oprnd;
+  PC = get_oprnd(in_spec, op_spec);
+}
+
+static inline void BRLE(byte in_spec, word op_spec) {
+  if (NZVC & 0x0c) {
+    PC = get_oprnd(in_spec, op_spec);
+  }
+}
+
+static inline void BRLT(byte in_spec, word op_spec) {
+  if (NZVC & 0x08) {
+    PC = get_oprnd(in_spec, op_spec);
+  }
+}
+
+static inline void BREQ(byte in_spec, word op_spec) {
+  if (NZVC & 0x04) {
+    PC = get_oprnd(in_spec, op_spec);
+  }
+}
+
+static inline void BRNE(byte in_spec, word op_spec) {
+  if (!(NZVC & 0x04)) {
+    PC = get_oprnd(in_spec, op_spec);
+  }
+}
+
+static inline void BRGE(byte in_spec, word op_spec) {
+  if (!(NZVC & 0x0c)) {
+    PC = get_oprnd(in_spec, op_spec);
+  }
+}
+
+static inline void BRGT(byte in_spec, word op_spec) {
+  if (!(NZVC & 0x08)) {
+    PC = get_oprnd(in_spec, op_spec);
+  }
+}
+
+static inline void BRV(byte in_spec, word op_spec) {
+  if (NZVC & 0x02) {
+    PC = get_oprnd(in_spec, op_spec);
+  }
+}
+
+static inline void BRC(byte in_spec, word op_spec) {
+  if (NZVC & 0x01) {
+    PC = get_oprnd(in_spec, op_spec);
+  }
+}
+
+static inline void CALL(byte in_spec, word op_spec) {
+  SP -= 2;
+  MEM[SP + 0] = PC >> 8;
+  MEM[SP + 1] = PC & 0x00ff;
+  PC = get_oprnd(in_spec, op_spec);
 }
 
 static inline void LDWr(byte in_spec, word op_spec) {
@@ -101,7 +185,9 @@ static inline void LDWr(byte in_spec, word op_spec) {
       break;
   }
 
-  NZVC = (NZVC & 0x03) | ((oprnd & 0x80) >> 4) | ((oprnd == 0) << 2);
+  NZVC = (NZVC & 0x03);           /* clear all but NZ */
+  NZVC |= (oprnd & 0x8000) >> 4;  /* N */
+  NZVC |= (oprnd == 0) << 2;      /* Z */
 }
 
 static inline void LDBr(byte in_spec, word op_spec) {
@@ -140,7 +226,9 @@ static inline void LDBr(byte in_spec, word op_spec) {
       break;
   }
 
-  NZVC = (NZVC & 0x03) | ((oprnd == 0) << 2);
+  NZVC &= 0x03;               /* clear all but NZ */
+                              /* N is 0 by definition of Pep/9 */
+  NZVC |= (oprnd == 0) << 2;  /* Z */
 }
 
 static inline void STWr(byte in_spec, word op_spec) {
@@ -183,10 +271,42 @@ static inline void STBr(byte in_spec, word op_spec) {
   }
 }
 
+static inline void DECI(byte in_spec, word op_spec) {
+  int i;
+  word w;
+  word op_addr = get_addr(in_spec, op_spec);
+
+  scanf("%d", &i);
+  w = i;
+
+  MEM[op_addr + 0] = w >> 8;
+  MEM[op_addr + 1] = w & 0x00ff;
+
+  NZVC &= 0x01;                 /* clear all but C */
+  NZVC |= (w & 0x8000) >> 4;    /* N */
+  NZVC |= (w == 0) << 2;        /* Z */
+  NZVC |= (i != (sword)w) << 1; /* V */
+
+  assert((i >= -32768 && i <= 32767) || (NZVC & 0x02));
+  assert(((sword)w >= 0) || (NZVC & 0x08));
+  assert(((sword)w != 0) || (NZVC & 0x04));
+}
+
 static inline void DECO(byte in_spec, word op_spec) {
   word oprnd  = get_oprnd(in_spec, op_spec);
-  sword value = 0 | oprnd;
-  printf("%d", value);
+  printf("%d", (sword)oprnd);
+}
+
+static inline void HEXO(byte in_spec, word op_spec) {
+  word oprnd = get_oprnd(in_spec, op_spec);
+  printf("%.4X", oprnd);
+}
+
+static inline void STRO(byte in_spec, word op_spec) {
+  word op_addr = get_addr(in_spec, op_spec);
+  while ('\0' != MEM[op_addr]) {
+    printf("%c", MEM[op_addr++]);
+  }
 }
 
 static inline void ADDSP(byte in_spec, word op_spec) {
@@ -200,12 +320,12 @@ static inline void SUBSP(byte in_spec, word op_spec) {
 }
 
 static void (*ops[256])(byte, word) = {
-  /* STOP */    NULL, 
-  /* RET */     NULL, 
-  /* RETTR */   NULL, 
-  /* MOVSPA */  NULL, 
-  /* MOVFLGA */ NULL, 
-  /* MOVAFLG */ NULL, 
+  /* STOP */    NULL,
+  /* RET */     RET,
+  /* RETTR */   NULL,
+  /* MOVSPA */  MOVSPA,
+  /* MOVFLGA */ MOVFLGA,
+  /* MOVAFLG */ MOVAFLG,
   /* NOTr */    NULL, NULL,
   /* NEGr */    NULL, NULL,
   /* ASLr */    NULL, NULL,
@@ -213,21 +333,21 @@ static void (*ops[256])(byte, word) = {
   /* ROLr */    NULL, NULL,
   /* RORr */    NULL, NULL,
   /* BR */      BR,   BR,
-  /* BRLE */    NULL, NULL,
-  /* BRLT */    NULL, NULL,
-  /* BREQ */    NULL, NULL,
-  /* BRNE */    NULL, NULL,
-  /* BRGE */    NULL, NULL,
-  /* BRGT */    NULL, NULL,
-  /* BRV */     NULL, NULL,
-  /* BRC */     NULL, NULL,
-  /* CALL */    NULL, NULL,
+  /* BRLE */    BRLE, BRLE,
+  /* BRLT */    BRLT, BRLT,
+  /* BREQ */    BREQ, BREQ,
+  /* BRNE */    BRNE, BRNE,
+  /* BRGE */    BRGE, BRGE,
+  /* BRGT */    BRGT, BRGT,
+  /* BRV */     BRV, BRV,
+  /* BRC */     BRC, BRC,
+  /* CALL */    CALL, CALL,
   /* NOPn */    NULL, NULL,
   /* NOP */     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  /* DECI */    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  /* DECI */    DECI, DECI, DECI, DECI, DECI, DECI, DECI, DECI,
   /* DECO */    DECO, DECO, DECO, DECO, DECO, DECO, DECO, DECO,
-  /* HEXO */    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  /* STRO */    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  /* HEXO */    HEXO, HEXO, HEXO, HEXO, HEXO, HEXO, HEXO, HEXO,
+  /* STRO */    STRO, STRO, STRO, STRO, STRO, STRO, STRO, STRO,
   /* ADDSP */   ADDSP, ADDSP, ADDSP, ADDSP, ADDSP, ADDSP, ADDSP,
   /* SUBSP */   SUBSP, SUBSP, SUBSP, SUBSP, SUBSP, SUBSP, SUBSP,
   /* ADDr */    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,

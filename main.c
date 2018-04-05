@@ -33,7 +33,6 @@ static inline byte a2x(byte a) {
     case 'd':
     case 'e':
     case 'f':
-    case 'z':
       a -= 32; /* fall-through */
 
     case 'A':
@@ -43,6 +42,9 @@ static inline byte a2x(byte a) {
     case 'E':
     case 'F':
       return a - 65 + 10;
+
+    case 'z':
+      return 0;
 
     default:
       assert(false);
@@ -98,7 +100,7 @@ int main(int argc, char **argv) {
   OK(ret);
 
   SP = SP_INIT;
-  
+
   for (;;) {
     // fetch instruction specifier
     IN_SPEC = MEM[PC];
