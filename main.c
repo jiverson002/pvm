@@ -1,51 +1,19 @@
 #include <assert.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+
+#include "ops.h"
+#include "types.h"
+#include "vm.h"
 
 #define OK(err) if (err) { printf("notok@%d\n", __LINE__); goto notok; }
 
-typedef uint8_t  byte;
-typedef uint16_t word;
+static inline bool is_nonunary(byte in_spec) {
+  return !(((in_spec) < 0x12) || (((in_spec) | 0x01) == 0x27));
+}
 
-typedef union {
-  byte raw[2];
-  word val;
-} reg_word;
-
-typedef union {
-  byte raw[1];
-  byte val;
-} reg_byte;
-
-struct {
-  struct {
-    reg_byte nzvc;
-    reg_word a;
-    reg_word x;
-    reg_word pc;
-    reg_word sp;
-    reg_byte in_spec;
-    reg_word op_spec;
-  } cpu;
-
-  byte mem[1<<16];
-} vm;
-
-#define NZVC    (vm.cpu.nzvc.val)
-#define A       (vm.cpu.a.val)
-#define X       (vm.cpu.x.val)
-#define PC      (vm.cpu.pc.val)
-#define SP      (vm.cpu.sp.val)
-#define IN_SPEC (vm.cpu.in_spec.val)
-#define OP_SPEC (vm.cpu.op_spec.val)
-#define MEM     (vm.mem)
-
-#define IS_UNARY(in_spec) (((in_spec) < 0x12) || (((in_spec) | 0x01) == 0x27))
-
-static byte a2x(byte a) {
+static inline byte a2x(byte a) {
   switch (a) {
     case '0':
     case '1':
@@ -57,7 +25,7 @@ static byte a2x(byte a) {
     case '7':
     case '8':
     case '9':
-    return a - 48;
+      return a - 48;
 
     case 'a':
     case 'b':
@@ -66,7 +34,7 @@ static byte a2x(byte a) {
     case 'e':
     case 'f':
     case 'z':
-    a -= 32; /* fall-through */
+      a -= 32; /* fall-through */
 
     case 'A':
     case 'B':
@@ -74,14 +42,14 @@ static byte a2x(byte a) {
     case 'D':
     case 'E':
     case 'F':
-    return a - 65 + 10;
+      return a - 65 + 10;
 
     default:
-    assert(false);
+      assert(false);
   }
 }
 
-static int load(char const * const filename) {
+static inline int read(char const * const filename) {
   int ret;
   FILE *file;
   char *buf;
@@ -126,15 +94,15 @@ notok:
 int main(int argc, char **argv) {
   int ret;
 
-  memset(&vm, 0, sizeof(vm));
-
-  ret = load(argv[1]);
+  ret = read(argv[1]);
   OK(ret);
+
+  SP = SP_INIT;
   
   for (;;) {
     // fetch instruction specifier
     IN_SPEC = MEM[PC];
-    printf("%.2X", IN_SPEC);
+    //printf("%.4X  %.2X", PC, IN_SPEC);
 
     // increment pc
     PC++;
@@ -143,21 +111,27 @@ int main(int argc, char **argv) {
     // NOOP
 
     // if non-unary
-    if (!IS_UNARY(IN_SPEC)) {
+    if (is_nonunary(IN_SPEC)) {
       // fetch operand specifier
-      OP_SPEC = ((word)MEM[PC] << 8) | (word)MEM[PC+1];
-      printf(" %.4X", OP_SPEC);
+      OP_SPEC = LDW(PC);
+      //printf(" %.4X", OP_SPEC);
 
       // increment pc
       PC += 2;
     }
-    printf("\n");
+    //printf("\n");
 
     // execute
-    if (0x00 == MEM[PC]) {
+    if (0x00 == IN_SPEC) {
       break;
     }
+    ops[IN_SPEC](IN_SPEC, OP_SPEC);
   }
+
+  //for (int i = 0; i < 32; i++) {
+  //  printf("%.2X ", MEM[i]);
+  //}
+  //printf("\n");
 
   return EXIT_SUCCESS;
 
