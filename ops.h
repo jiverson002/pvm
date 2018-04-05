@@ -6,6 +6,7 @@
 #include "vm.h"
 
 #define LDW(idx) (((word)MEM[(idx)] << 8) | (word)MEM[(idx) + 1])
+#define STW(idx, w) (MEM[idx + 0] = (w) >> 8, MEM[idx + 1] = (w) & 0x00ff)
 
 static inline byte get_reg(byte in_spec) {
   if (0x06 <= in_spec && in_spec <= 0x11) {
@@ -84,7 +85,7 @@ static inline word get_oprnd(byte in_spec, word op_spec) {
   return oprnd;
 }
 
-static inline void RET(byte in_spec, word op_spec) {
+static void RET(byte in_spec, word op_spec) {
   PC = LDW(SP);
   SP += 2;
 
@@ -92,14 +93,14 @@ static inline void RET(byte in_spec, word op_spec) {
   (void)op_spec;
 }
 
-static inline void MOVSPA(byte in_spec, word op_spec) {
+static void MOVSPA(byte in_spec, word op_spec) {
   A = SP;
 
   (void)in_spec;
   (void)op_spec;
 }
 
-static inline void MOVFLGA(byte in_spec, word op_spec) {
+static void MOVFLGA(byte in_spec, word op_spec) {
   A &= 0xfff0; /* clear A<12..15> */
   A |= NZVC;
 
@@ -107,73 +108,116 @@ static inline void MOVFLGA(byte in_spec, word op_spec) {
   (void)op_spec;
 }
 
-static inline void MOVAFLG(byte in_spec, word op_spec) {
+static void MOVAFLG(byte in_spec, word op_spec) {
   NZVC = A & 0x000f;
 
   (void)in_spec;
   (void)op_spec;
 }
 
-static inline void BR(byte in_spec, word op_spec) {
+static void NOTr(byte in_spec, word op_spec) {
+  word w;
+
+  switch (get_reg(in_spec)) {
+    case 0x00:  /* accumulator */
+      w = A = ~A;
+      break;
+    case 0x01:  /* index */
+      w = X = ~X;
+      break;
+  }
+
+  NZVC &= 0x03;               /* clear all but NZ */
+  NZVC |= (w & 0x8000) >> 4;  /* N */
+  NZVC |= (w == 0) << 2;      /* Z */
+
+  (void)in_spec;
+  (void)op_spec;
+}
+
+static void NEGr(byte in_spec, word op_spec) {
+  word w;
+  sword s;
+
+  switch (get_reg(in_spec)) {
+    case 0x00:  /* accumulator */
+      s = A;
+      w = A = -A;
+      break;
+    case 0x01:  /* index */
+      s = X;
+      w = X = -X;
+      break;
+  }
+
+  NZVC &= 0x01;               /* clear all but NZV */
+  NZVC |= (w & 0x8000) >> 4;  /* N */
+  NZVC |= (w == 0) << 2;      /* Z */
+  NZVC |= (s == -32768) << 1; /* V */
+
+  (void)in_spec;
+  (void)op_spec;
+}
+
+static void BR(byte in_spec, word op_spec) {
   PC = get_oprnd(in_spec, op_spec);
 }
 
-static inline void BRLE(byte in_spec, word op_spec) {
+static void BRLE(byte in_spec, word op_spec) {
   if (NZVC & 0x0c) {
     PC = get_oprnd(in_spec, op_spec);
   }
 }
 
-static inline void BRLT(byte in_spec, word op_spec) {
+static void BRLT(byte in_spec, word op_spec) {
   if (NZVC & 0x08) {
     PC = get_oprnd(in_spec, op_spec);
   }
 }
 
-static inline void BREQ(byte in_spec, word op_spec) {
+static void BREQ(byte in_spec, word op_spec) {
   if (NZVC & 0x04) {
     PC = get_oprnd(in_spec, op_spec);
   }
 }
 
-static inline void BRNE(byte in_spec, word op_spec) {
+static void BRNE(byte in_spec, word op_spec) {
   if (!(NZVC & 0x04)) {
     PC = get_oprnd(in_spec, op_spec);
   }
 }
 
-static inline void BRGE(byte in_spec, word op_spec) {
+static void BRGE(byte in_spec, word op_spec) {
   if (!(NZVC & 0x0c)) {
     PC = get_oprnd(in_spec, op_spec);
   }
 }
 
-static inline void BRGT(byte in_spec, word op_spec) {
+static void BRGT(byte in_spec, word op_spec) {
   if (!(NZVC & 0x08)) {
     PC = get_oprnd(in_spec, op_spec);
   }
 }
 
-static inline void BRV(byte in_spec, word op_spec) {
+static void BRV(byte in_spec, word op_spec) {
   if (NZVC & 0x02) {
     PC = get_oprnd(in_spec, op_spec);
   }
 }
 
-static inline void BRC(byte in_spec, word op_spec) {
+static void BRC(byte in_spec, word op_spec) {
   if (NZVC & 0x01) {
     PC = get_oprnd(in_spec, op_spec);
   }
 }
 
-static inline void CALL(byte in_spec, word op_spec) {
+static void CALL(byte in_spec, word op_spec) {
   SP -= 2;
-  MEM[SP + 0] = PC >> 8;
-  MEM[SP + 1] = PC & 0x00ff;
+  STW(SP, PC);
   PC = get_oprnd(in_spec, op_spec);
 }
 
-static inline void LDWr(byte in_spec, word op_spec) {
+static void LDWr(byte in_spec, word op_spec) {
   word oprnd = get_oprnd(in_spec, op_spec);
 
   switch (get_reg(in_spec)) {
@@ -185,12 +229,12 @@ static inline void LDWr(byte in_spec, word op_spec) {
       break;
   }
 
-  NZVC = (NZVC & 0x03);           /* clear all but NZ */
+  NZVC &= 0x03;                   /* clear all but NZ */
   NZVC |= (oprnd & 0x8000) >> 4;  /* N */
   NZVC |= (oprnd == 0) << 2;      /* Z */
 }
 
-static inline void LDBr(byte in_spec, word op_spec) {
+static void LDBr(byte in_spec, word op_spec) {
   byte b;
   word oprnd, op_addr;
 
@@ -231,22 +275,20 @@ static inline void LDBr(byte in_spec, word op_spec) {
   NZVC |= (oprnd == 0) << 2;  /* Z */
 }
 
-static inline void STWr(byte in_spec, word op_spec) {
+static void STWr(byte in_spec, word op_spec) {
   word op_addr = get_addr(in_spec, op_spec);
 
   switch (get_reg(in_spec)) {
     case 0x00:  /* accumulator */
-      MEM[op_addr + 0] = A >> 8;
-      MEM[op_addr + 1] = A & 0x00ff;
+      STW(op_addr, A);
       break;
     case 0x01:  /* index */
-      MEM[op_addr + 0] = X >> 8;
-      MEM[op_addr + 1] = X & 0x00ff;
+      STW(op_addr, X);
       break;
   }
 }
 
-static inline void STBr(byte in_spec, word op_spec) {
+static void STBr(byte in_spec, word op_spec) {
   word op_addr = get_addr(in_spec, op_spec);
 
   if (charOut == op_addr) {
@@ -271,7 +313,7 @@ static inline void STBr(byte in_spec, word op_spec) {
   }
 }
 
-static inline void DECI(byte in_spec, word op_spec) {
+static void DECI(byte in_spec, word op_spec) {
   int i;
   word w;
   word op_addr = get_addr(in_spec, op_spec);
@@ -279,8 +321,7 @@ static inline void DECI(byte in_spec, word op_spec) {
   scanf("%d", &i);
   w = i;
 
-  MEM[op_addr + 0] = w >> 8;
-  MEM[op_addr + 1] = w & 0x00ff;
+  STW(op_addr, w);
 
   NZVC &= 0x01;                 /* clear all but C */
   NZVC |= (w & 0x8000) >> 4;    /* N */
@@ -292,31 +333,57 @@ static inline void DECI(byte in_spec, word op_spec) {
   assert(((sword)w != 0) || (NZVC & 0x04));
 }
 
-static inline void DECO(byte in_spec, word op_spec) {
-  word oprnd  = get_oprnd(in_spec, op_spec);
-  printf("%d", (sword)oprnd);
+static void DECO(byte in_spec, word op_spec) {
+  printf("%d", (sword)get_oprnd(in_spec, op_spec));
 }
 
-static inline void HEXO(byte in_spec, word op_spec) {
-  word oprnd = get_oprnd(in_spec, op_spec);
-  printf("%.4X", oprnd);
+static void HEXO(byte in_spec, word op_spec) {
+  printf("%.4X", get_oprnd(in_spec, op_spec));
 }
 
-static inline void STRO(byte in_spec, word op_spec) {
+static void STRO(byte in_spec, word op_spec) {
   word op_addr = get_addr(in_spec, op_spec);
   while ('\0' != MEM[op_addr]) {
     printf("%c", MEM[op_addr++]);
   }
 }
 
-static inline void ADDSP(byte in_spec, word op_spec) {
-  word oprnd = get_oprnd(in_spec, op_spec);
-  SP += oprnd;
+static void ADDSP(byte in_spec, word op_spec) {
+  /* FIXME need to modify NZVC bits */
+  SP += get_oprnd(in_spec, op_spec);
 }
 
-static inline void SUBSP(byte in_spec, word op_spec) {
+static void SUBSP(byte in_spec, word op_spec) {
+  /* FIXME need to modify NZVC bits */
+  SP -= get_oprnd(in_spec, op_spec);
+}
+
+static void ADDr(byte in_spec, word op_spec) {
+  word o, w, v;
   word oprnd = get_oprnd(in_spec, op_spec);
-  SP -= oprnd;
+
+  switch (get_reg(in_spec)) {
+    case 0x00:  /* accumulator */
+      o = A;
+      w = A += oprnd;
+      break;
+    case 0x01:  /* index */
+      o = X;
+      w = X += oprnd;
+      break;
+  }
+
+  /* Inspect the signs of the numbers and the sum. If you add numbers with
+   * different signs, you cannot have an overflow. If you add two numbers with
+   * the same sign and the result is not the same sign, then you have signed
+   * overflow. */
+  v = !((o & 0x8000) ^ (oprnd & 0x8000)) && ((o & 0x8000) ^ (w & 0x8000));
+
+  NZVC = 0;                   /* clear all bits */
+  NZVC |= (w & 0x8000) >> 4;  /* N */
+  NZVC |= (w == 0) << 2;      /* Z */
+  NZVC |= v << 1;             /* V */
+  NZVC |= (w < o);            /* C */
 }
 
 static void (*ops[256])(byte, word) = {
@@ -326,8 +393,8 @@ static void (*ops[256])(byte, word) = {
   /* MOVSPA */  MOVSPA,
   /* MOVFLGA */ MOVFLGA,
   /* MOVAFLG */ MOVAFLG,
-  /* NOTr */    NULL, NULL,
-  /* NEGr */    NULL, NULL,
+  /* NOTr */    NOTr, NOTr,
+  /* NEGr */    NEGr, NEGr,
   /* ASLr */    NULL, NULL,
   /* ASRr */    NULL, NULL,
   /* ROLr */    NULL, NULL,
@@ -350,8 +417,8 @@ static void (*ops[256])(byte, word) = {
   /* STRO */    STRO, STRO, STRO, STRO, STRO, STRO, STRO, STRO,
   /* ADDSP */   ADDSP, ADDSP, ADDSP, ADDSP, ADDSP, ADDSP, ADDSP,
   /* SUBSP */   SUBSP, SUBSP, SUBSP, SUBSP, SUBSP, SUBSP, SUBSP,
-  /* ADDr */    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-                NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  /* ADDr */    ADDr, ADDr, ADDr, ADDr, ADDr, ADDr, ADDr, ADDr,
+                ADDr, ADDr, ADDr, ADDr, ADDr, ADDr, ADDr, ADDr,
   /* SUBr */    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                 NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* ANDr */    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
