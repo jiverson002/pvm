@@ -58,32 +58,19 @@ static inline word get_addr(byte inspec, word opspec) {
 static inline word get_oprnd(byte inspec, word opspec) {
   word oprnd, op_addr;
 
-  if (inspec <= 0x25) {
-    switch (inspec & 0x01) {
-      case 0x00:  /* immediate */
-        oprnd = opspec;
-        break;
-      case 0x01:  /* indexed */
+  switch (inspec & 0x01) {
+    case 0x00:  /* immediate */
+      oprnd = opspec;
+      break;
+    default:
+      if (inspec <= 0x25) { /* indexed */
         op_addr = opspec + X;
-        oprnd   = LDW(opspec + X);
-        break;
-    }
-  } else {
-    switch (inspec & 0x07) {
-      case 0x00:  /* immediate */
-        oprnd = opspec;
-        break;
-      case 0x01:  /* direct */
-      case 0x02:  /* indirect */
-      case 0x03:  /* stack-relative */
-      case 0x04:  /* stack-relative deferred */
-      case 0x05:  /* indexed */
-      case 0x06:  /* stack-indexed */
-      case 0x07:  /* stack-deferred indexed */
+      } else { /* direct, indirect, stack-relative, stack-relative deferred,
+                  indexed, stack-indexed, stack-deferred indexed */
         op_addr = get_addr(inspec, opspec);
-        oprnd   = LDW(op_addr);
-        break;
-    }
+      }
+      oprnd = LDW(op_addr);
+      break;
   }
 
   return oprnd;
