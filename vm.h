@@ -14,7 +14,7 @@ static struct {
     word opspec;
   } cpu;
 
-  byte mem[(1 << 15) + 1]; /* allocate one-extra byte to allow for loads to
+  byte mem[(1 << 16) + 1]; /* allocate one-extra byte to allow for loads to
                               always occur as words */
 } vm;
 
