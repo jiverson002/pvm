@@ -16,11 +16,16 @@ static inline bool is_nonunary(byte in_spec) {
   return !(((in_spec) < 0x12) || (((in_spec) | 0x01) == 0x27));
 }
 
-static inline byte get_reg(byte inspec) {
+static inline word *get_reg(byte inspec) {
   if (inspec <= 0x11) {
-    return inspec & 0x01;
+    if (0x00 == (inspec & 0x01)) {      /* accumulator */
+      return &A;
+    }
+    return &X;                          /* index */
+  } else if (0x00 == (inspec & 0x08)) { /* accumulator */
+    return &A;
   }
-  return (inspec & 0x08) >> 3;
+  return &X;                            /* index */
 }
 
 static inline word get_addr(byte inspec, word opspec) {
@@ -86,46 +91,28 @@ static void MOVAFLG(byte inspec, word opspec) {
 }
 
 static void NOTr(byte inspec, word opspec) {
-  word w;
+  word *r = get_reg(inspec);
 
-  switch (get_reg(inspec)) {
-    case 0x00:  /* accumulator */
-      w = A = ~A;
-      break;
-    case 0x01:  /* index */
-      w = X = ~X;
-      break;
-  }
+  *r = ~(*r);
 
-  NZVC &= 0x03;               /* clear all but VC */
-  NZVC |= (w & 0x8000) >> 12; /* N */
-  NZVC |= (w == 0) << 2;      /* Z */
+  NZVC &= 0x03;                 /* clear all but VC */
+  NZVC |= (*r & 0x8000) >> 12;  /* N */
+  NZVC |= (*r == 0) << 2;       /* Z */
 
-  (void)inspec;
   (void)opspec;
 }
 
 static void NEGr(byte inspec, word opspec) {
-  word w;
-  sword s;
+  word *r = get_reg(inspec);
+  sword s = *r;
 
-  switch (get_reg(inspec)) {
-    case 0x00:  /* accumulator */
-      s = A;
-      w = A = -A;
-      break;
-    case 0x01:  /* index */
-      s = X;
-      w = X = -X;
-      break;
-  }
+  *r = -(*r);
 
-  NZVC &= 0x01;               /* clear all but C */
-  NZVC |= (w & 0x8000) >> 12; /* N */
-  NZVC |= (w == 0) << 2;      /* Z */
-  NZVC |= (s == -32768) << 1; /* V */
+  NZVC &= 0x01;                 /* clear all but C */
+  NZVC |= (*r & 0x8000) >> 12;  /* N */
+  NZVC |= (*r == 0) << 2;       /* Z */
+  NZVC |= (s == -32768) << 1;   /* V */
 
-  (void)inspec;
   (void)opspec;
 }
 
@@ -188,25 +175,19 @@ static void CALL(byte inspec, word opspec) {
 }
 
 static void LDWr(byte inspec, word opspec) {
-  word oprnd = get_oprnd(inspec, opspec);
+  word *r = get_reg(inspec);
 
-  switch (get_reg(inspec)) {
-    case 0x00:  /* accumulator */
-      A = oprnd;
-      break;
-    case 0x01:  /* index */
-      X = oprnd;
-      break;
-  }
+  *r = get_oprnd(inspec, opspec);
 
-  NZVC &= 0x03;                   /* clear all but VC */
-  NZVC |= (oprnd & 0x8000) >> 12; /* N */
-  NZVC |= (oprnd == 0) << 2;      /* Z */
+  NZVC &= 0x03;                 /* clear all but VC */
+  NZVC |= (*r & 0x8000) >> 12;  /* N */
+  NZVC |= (*r == 0) << 2;       /* Z */
 }
 
 static void LDBr(byte inspec, word opspec) {
   byte b;
   word oprnd, op_addr;
+  word *r = get_reg(inspec);
 
   switch (inspec | 0x08) {
     case 0xd8: /* immediate */
@@ -231,67 +212,37 @@ static void LDBr(byte inspec, word opspec) {
       break;
   }
 
-  switch (get_reg(inspec)) {
-    case 0x00:  /* accumulator */
-      A = (A & 0xff00) | oprnd;
-      break;
-    case 0x01:  /* index */
-      X = (X & 0xff00) | oprnd;
-      break;
-  }
+  *r = (*r & 0xff00) | oprnd;
 
-  NZVC &= 0x03;               /* clear all but VC */
-                              /* N is 0 by definition of Pep/9 */
-  NZVC |= (oprnd == 0) << 2;  /* Z */
+  NZVC &= 0x03;           /* clear all but VC */
+                          /* N is 0 by definition of Pep/9 */
+  NZVC |= (*r == 0) << 2; /* Z */
 }
 
 static void STWr(byte inspec, word opspec) {
-  word op_addr = get_addr(inspec, opspec);
-
-  switch (get_reg(inspec)) {
-    case 0x00:  /* accumulator */
-      STW(op_addr, A);
-      break;
-    case 0x01:  /* index */
-      STW(op_addr, X);
-      break;
-  }
+  STW(get_addr(inspec, opspec), *get_reg(inspec));
 }
 
 static void STBr(byte inspec, word opspec) {
+  byte b = *get_reg(inspec) & 0x00ff;
   word op_addr = get_addr(inspec, opspec);
 
   if (charOut == op_addr) {
-    switch (get_reg(inspec)) {
-      case 0x00:  /* accumulator */
-        printf("%c", (byte)(A & 0x00ff));
-        break;
-      case 0x01:  /* index */
-        printf("%c", (byte)(X & 0x00ff));
-        break;
-    }
+    printf("%c", b);
   }
   else {
-    switch (get_reg(inspec)) {
-      case 0x00:  /* accumulator */
-        Mem[op_addr] = (byte)(A & 0x00ff);
-        break;
-      case 0x01:  /* index */
-        Mem[op_addr] = (byte)(X & 0x00ff);
-        break;
-    }
+    Mem[op_addr] = b;
   }
 }
 
 static void DECI(byte inspec, word opspec) {
   int i;
   word w;
-  word op_addr = get_addr(inspec, opspec);
 
   scanf("%d", &i);
   w = i;
 
-  STW(op_addr, w);
+  STW(get_addr(inspec, opspec), w);
 
   NZVC &= 0x01;                 /* clear all but C */
   NZVC |= (w & 0x8000) >> 12;   /* N */
@@ -329,116 +280,73 @@ static void SUBSP(byte inspec, word opspec) {
 }
 
 static void ADDr(byte inspec, word opspec) {
-  word o, w, v;
+  word o, v;
   word oprnd = get_oprnd(inspec, opspec);
+  word *r = get_reg(inspec);
 
-  switch (get_reg(inspec)) {
-    case 0x00:  /* accumulator */
-      o = A;
-      w = A += oprnd;
-      break;
-    case 0x01:  /* index */
-      o = X;
-      w = X += oprnd;
-      break;
-  }
+  o = *r;
+  *r += oprnd;
 
   /* Inspect the signs of the numbers and the sum. If you add numbers with
    * different signs, you cannot have an overflow. If you add two numbers with
    * the same sign and the result is not the same sign, then you have signed
    * overflow. */
-  v = !((o & 0x8000) ^ (oprnd & 0x8000)) && ((o & 0x8000) ^ (w & 0x8000));
+  v = !((o & 0x8000) ^ (oprnd & 0x8000)) && ((o & 0x8000) ^ (*r & 0x8000));
 
-  NZVC = 0;                   /* clear all bits */
-  NZVC |= (w & 0x8000) >> 12; /* N */
-  NZVC |= (w == 0) << 2;      /* Z */
-  NZVC |= v << 1;             /* V */
-  NZVC |= (w < o);            /* C */
+  NZVC = 0;                     /* clear all bits */
+  NZVC |= (*r & 0x8000) >> 12;  /* N */
+  NZVC |= (*r == 0) << 2;       /* Z */
+  NZVC |= v << 1;               /* V */
+  NZVC |= (*r < o);             /* C */
 }
 
 static void SUBr(byte inspec, word opspec) {
-  word o, w, v;
+  word o, v;
   word oprnd = ~get_oprnd(inspec, opspec) + 1;
+  word *r = get_reg(inspec);
 
-  switch (get_reg(inspec)) {
-    case 0x00:  /* accumulator */
-      o = A;
-      w = A += oprnd;
-      break;
-    case 0x01:  /* index */
-      o = X;
-      w = X += oprnd;
-      break;
-  }
+  o = *r;
+  *r += oprnd;
 
-  /* Inspect the signs of the numbers and the sum. If you add numbers with
-   * different signs, you cannot have an overflow. If you add two numbers with
-   * the same sign and the result is not the same sign, then you have signed
-   * overflow. */
-  v = !((o & 0x8000) ^ (oprnd & 0x8000)) && ((o & 0x8000) ^ (w & 0x8000));
+  /* See note in ADDr for explanation! */
+  v = !((o & 0x8000) ^ (oprnd & 0x8000)) && ((o & 0x8000) ^ (*r & 0x8000));
 
-  NZVC = 0;                   /* clear all bits */
-  NZVC |= (w & 0x8000) >> 12; /* N */
-  NZVC |= (w == 0) << 2;      /* Z */
-  NZVC |= v << 1;             /* V */
-  NZVC |= (w < o);            /* C */
+  NZVC = 0;                     /* clear all bits */
+  NZVC |= (*r & 0x8000) >> 12;  /* N */
+  NZVC |= (*r == 0) << 2;       /* Z */
+  NZVC |= v << 1;               /* V */
+  NZVC |= (*r < o);             /* C */
 }
 
 static void ANDr(byte inspec, word opspec) {
-  word w;
-  word oprnd = get_oprnd(inspec, opspec);
+  word *r = get_reg(inspec);
 
-  switch (get_reg(inspec)) {
-    case 0x00:  /* accumulator */
-      w = A &= oprnd;
-      break;
-    case 0x01:  /* index */
-      w = X &= oprnd;
-      break;
-  }
+  *r &= get_oprnd(inspec, opspec);;
 
-  NZVC &= 0x03;               /* clear all but VC */
-  NZVC |= (w & 0x8000) >> 12; /* N */
-  NZVC |= (w == 0) << 2;      /* Z */
+  NZVC &= 0x03;                 /* clear all but VC */
+  NZVC |= (*r & 0x8000) >> 12;  /* N */
+  NZVC |= (*r == 0) << 2;       /* Z */
 }
 
 static void ORr(byte inspec, word opspec) {
-  word w;
-  word oprnd = get_oprnd(inspec, opspec);
+  word *r = get_reg(inspec);
 
-  switch (get_reg(inspec)) {
-    case 0x00:  /* accumulator */
-      w = A |= oprnd;
-      break;
-    case 0x01:  /* index */
-      w = X |= oprnd;
-      break;
-  }
+  *r |= get_oprnd(inspec, opspec);
 
-  NZVC &= 0x03;               /* clear all but VC */
-  NZVC |= (w & 0x8000) >> 12; /* N */
-  NZVC |= (w == 0) << 2;      /* Z */
+  NZVC &= 0x03;                 /* clear all but VC */
+  NZVC |= (*r & 0x8000) >> 12;  /* N */
+  NZVC |= (*r == 0) << 2;       /* Z */
 }
 
 static void CPWr(byte inspec, word opspec) {
   word o, w, v;
   word oprnd = ~get_oprnd(inspec, opspec) + 1;
+  word *r = get_reg(inspec);
 
-  switch (get_reg(inspec)) {
-    case 0x00:  /* accumulator */
-      o = A;
-      w = A + oprnd;
-      break;
-    case 0x01:  /* index */
-      o = X;
-      w = X + oprnd;
-      break;
-  }
+  o = *r;
+  w = *r + oprnd;
 
-  /* Inspect the signs of the numbers and the sum. If you add numbers with
-   * different signs, you cannot have an overflow. If you add two numbers with
-   * the same sign and the result is not the same sign, then you have signed
-   * overflow. */
+  /* See note in ADDr for explanation! */
   v = !((o & 0x8000) ^ (oprnd & 0x8000)) && ((o & 0x8000) ^ (w & 0x8000));
 
   NZVC = 0;                   /* clear all bits */
