@@ -9,71 +9,50 @@
 #include "types.h"
 #include "vm.h"
 
-#define LDW(idx) (((word)Mem[(idx)] << 8) | (word)Mem[(idx) + 1])
-#define STW(idx, w) (Mem[idx + 0] = (w) >> 8, Mem[idx + 1] = (w) & 0x00ff)
+#define LDW(idx)    (((word)Mem[(idx)] << 8) | (word)Mem[(idx) + 1])
+#define STW(idx, w) (Mem[(idx) + 0] = (w) >> 8, Mem[(idx) + 1] = (w) & 0x00ff)
 
 static inline bool is_nonunary(byte in_spec) {
   return !(((in_spec) < 0x12) || (((in_spec) | 0x01) == 0x27));
 }
 
 static inline byte get_reg(byte inspec) {
-  if (0x06 <= inspec && inspec <= 0x11) {
+  if (inspec <= 0x11) {
     return inspec & 0x01;
-  } else {
-    assert(inspec >= 0x60);
-    return (inspec & 0x08) >> 3;
   }
+  return (inspec & 0x08) >> 3;
 }
 
 static inline word get_addr(byte inspec, word opspec) {
-  word op_addr;
-
   switch (inspec & 0x07) {
     case 0x01:  /* direct */
-      op_addr = opspec;
-      break;
+      return opspec;
     case 0x02:  /* indirect */
-      op_addr = LDW(opspec);
-      break;
+      return LDW(opspec);
     case 0x03:  /* stack-relative */
-      op_addr = SP + opspec;
-      break;
+      return SP + opspec;
     case 0x04:  /* stack-relative deferred */
-      op_addr = LDW(SP + opspec);
-      break;
+      return LDW(SP + opspec);
     case 0x05:  /* indexed */
-      op_addr = opspec + X;
-      break;
+      return opspec + X;
     case 0x06:  /* stack-indexed */
-      op_addr = SP + opspec + X;
-      break;
+      return SP + opspec + X;
     case 0x07:  /* stack-deferred indexed */
-      op_addr = LDW(SP + opspec) + X;
-      break;
+      return LDW(SP + opspec) + X;
   }
-
-  return op_addr;
+  return 0xffff; /* error */
 }
 
 static inline word get_oprnd(byte inspec, word opspec) {
-  word oprnd, op_addr;
-
-  switch (inspec & 0x01) {
-    case 0x00:  /* immediate */
-      oprnd = opspec;
-      break;
-    default:
-      if (inspec <= 0x25) { /* indexed */
-        op_addr = opspec + X;
-      } else { /* direct, indirect, stack-relative, stack-relative deferred,
-                  indexed, stack-indexed, stack-deferred indexed */
-        op_addr = get_addr(inspec, opspec);
-      }
-      oprnd = LDW(op_addr);
-      break;
+  if (0x00 == (inspec & 0x01)) {  /* immediate */
+    return opspec;
+  } else if (inspec <= 0x25) {    /* indexed */
+    return LDW(opspec + X);
+  } else {                        /* direct, indirect, stack-relative,
+                                     stack-relative deferred, indexed,
+                                     stack-indexed, stack-deferred indexed */
+    return LDW(get_addr(inspec, opspec));
   }
-
-  return oprnd;
 }
 
 static void RET(byte inspec, word opspec) {
