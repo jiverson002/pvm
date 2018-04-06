@@ -27,7 +27,7 @@ static byte a2x[256] = {
 };
 
 static int read(char const * const filename) {
-  int ret;
+  int ret, i, j;
   FILE *file;
   char *buf=NULL;
   long len, num;
@@ -53,7 +53,7 @@ static int read(char const * const filename) {
   ret = fclose(file);
   OK(ret);
 
-  for (int i=0,j=0; i < len; i+=3,j++) {
+  for (i=0,j=0; i < len; i+=3,j++) {
     Mem[j] = a2x[(int)buf[i+0]] * 16 + a2x[(int)buf[i+1]];
   }
 
@@ -81,25 +81,25 @@ int main(int argc, char **argv) {
   OpSpec = 0;
 
   for (;;) {
-    // fetch instruction specifier
+    /* fetch instruction specifier */
     InSpec = Mem[PC];
 
-    // increment pc
+    /* increment pc */
     PC++;
 
-    // decode
-    // NOOP
+    /* decode */
+    /* NOOP */
 
-    // if non-unary
+    /* if non-unary */
     if (is_nonunary(InSpec)) {
-      // fetch operand specifier
+      /* fetch operand specifier */
       OpSpec = LDW(PC);
 
-      // increment pc
+      /* increment pc */
       PC += 2;
     }
 
-    // execute
+    /* execute */
     if (/* STOP */0x00 == InSpec) {
       break;
     }

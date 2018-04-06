@@ -2,17 +2,20 @@
 #define OPS_H 1
 
 #include <assert.h>
-#include <stdbool.h>
 #include <stdio.h>
 
 #include "os.h"
 #include "types.h"
 #include "vm.h"
 
+#if __STDC_VERSION__ < 199901L
+  #define inline /* define to nothing if pre-C99 */
+#endif
+
 #define LDW(idx)    (((word)Mem[(idx)] << 8) | (word)Mem[(idx) + 1])
 #define STW(idx, w) (Mem[(idx) + 0] = (w) >> 8, Mem[(idx) + 1] = (w) & 0x00ff)
 
-static inline bool is_nonunary(byte in_spec) {
+static inline int is_nonunary(byte in_spec) {
   return !(((in_spec) < 0x12) || (((in_spec) | 0x01) == 0x27));
 }
 
