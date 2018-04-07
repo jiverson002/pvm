@@ -61,15 +61,18 @@ static inline word get_addr(byte inspec, word opspec) {
 }
 
 static inline word get_oprnd(byte inspec, word opspec) {
-  if (0x00 == (inspec & 0x01)) {  /* immediate */
-    return opspec;
-  } else if (inspec <= 0x25) {    /* indexed */
-    return LDW(opspec + X);
-  } else {                        /* direct, indirect, stack-relative,
-                                     stack-relative deferred, indexed,
-                                     stack-indexed, stack-deferred indexed */
-    return LDW(get_addr(inspec, opspec));
+  if (inspec <= 0x25) {
+    if (0x00 == (inspec & 0x01)) {
+      return opspec;                    /* immediate */
+    }
+    return LDW(opspec + X);             /* indexed */
+  } else if (0x00 == (inspec & 0x07)) {
+      return opspec;                    /* immediate */
   }
+  return LDW(get_addr(inspec, opspec)); /* direct, indirect, stack-relative,
+                                           stack-relative deferred, indexed,
+                                           stack-indexed, stack-deferred indexed
+                                           */
 }
 
 static void RET(byte inspec, word opspec) {
