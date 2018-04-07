@@ -83,6 +83,7 @@ int main(int argc, char **argv) {
   for (;;) {
     /* fetch instruction specifier */
     InSpec = Mem[PC];
+    /*fprintf(stderr, "%.2X", InSpec);*/
 
     /* increment pc */
     PC++;
@@ -94,16 +95,23 @@ int main(int argc, char **argv) {
     if (is_nonunary(InSpec)) {
       /* fetch operand specifier */
       OpSpec = LDW(PC);
+      /*fprintf(stderr, " %.4X", OpSpec);*/
 
       /* increment pc */
       PC += 2;
     }
+    /*else {
+      fprintf(stderr, "     ");
+    }*/
 
     /* execute */
     if (/* STOP */0x00 == InSpec) {
+      /*fprintf(stderr, "\n");*/
       break;
     }
     ops[InSpec](InSpec, OpSpec);
+
+    /*fprintf(stderr, " %.4X %.4X %.4X %.4X %.1X\n", A, X, PC, SP, NZVC);*/
   }
 
   return EXIT_SUCCESS;
