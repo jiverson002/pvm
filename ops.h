@@ -15,6 +15,15 @@
 #define LDW(idx)    (((word)Mem[(idx)] << 8) | (word)Mem[(idx) + 1])
 #define STW(idx, w) (Mem[(idx) + 0] = (w) >> 8, Mem[(idx) + 1] = (w) & 0x00ff)
 
+/* Inspect the signs of the numbers and the sum. If you add numbers with
+ * different signs, you cannot have an overflow. If you add two numbers with the
+ * same sign and the result is not the same sign, then you have signed overflow.
+ * */
+#define SIGNED_WORD_OVERFLOW(a, b, c) \
+  (!(((a) & 0x8000) ^ ((b) & 0x8000)) && (((a) & 0x8000) ^ ((c) & 0x8000)))
+#define SIGNED_BYTE_OVERFLOW(a, b, c) \
+  (!(((a) & 0x80) ^ ((b) & 0x80)) && (((a) & 0x80) ^ ((c) & 0x80)))
+
 static inline int is_nonunary(byte in_spec) {
   return !(((in_spec) < 0x12) || (((in_spec) | 0x01) == 0x27));
 }
@@ -79,7 +88,7 @@ static void MOVSPA(byte inspec, word opspec) {
 }
 
 static void MOVFLGA(byte inspec, word opspec) {
-  A &= 0xfff0; /* clear A<12..15> */
+  A &= 0xff00; /* clear A<8..15> */
   A |= NZVC;
 
   (void)inspec;
@@ -99,22 +108,58 @@ static void NOTr(byte inspec, word opspec) {
   *r = ~(*r);
 
   NZVC &= 0x03;                 /* clear all but VC */
-  NZVC |= (*r & 0x8000) >> 12;  /* N */
-  NZVC |= (*r == 0) << 2;       /* Z */
+  NZVC |= (*r >= 0x8000) << 3;  /* N */
+  NZVC |= (*r == 0x0000) << 2;  /* Z */
 
   (void)opspec;
 }
 
 static void NEGr(byte inspec, word opspec) {
   word *r = get_reg(inspec);
-  sword s = *r;
 
   *r = -(*r);
 
   NZVC &= 0x01;                 /* clear all but C */
-  NZVC |= (*r & 0x8000) >> 12;  /* N */
-  NZVC |= (*r == 0) << 2;       /* Z */
-  NZVC |= (s == -32768) << 1;   /* V */
+  NZVC |= (*r >= 0x8000) << 3;  /* N */
+  NZVC |= (*r == 0x0000) << 2;  /* Z */
+  NZVC |= (*r == -(*r));        /* V */
+
+  (void)opspec;
+}
+
+static void ASLr(byte inspec, word opspec) {
+  byte v, c;
+  word *r = get_reg(inspec);
+
+  /* check if r<0..1> is 01 or 10 */
+  v = ((*r >= 0x4000) && (*r < 0x8000)) || ((*r >= 0x8000) && (*r < 0xc000));
+  /* check if r<0> is 1 */
+  c = *r >= 0x8000;
+
+  *r <<= 1;
+
+  NZVC = 0;                     /* clear all bits */
+  NZVC |= (*r >= 0x8000) << 3;  /* N */
+  NZVC |= (*r == 0x0000) << 2;  /* Z */
+  NZVC |= v << 1;               /* Z */
+  NZVC |= c;                    /* C */
+
+  (void)opspec;
+}
+
+static void ASRr(byte inspec, word opspec) {
+  byte c;
+  word *r = get_reg(inspec);
+
+  /* check if r<15> is 1  */
+  c = *r & 0x0001;
+
+  *r = (*r & 0x8000) | (*r >> 1);
+
+  NZVC &= 0x02;                 /* clear all but V */
+  NZVC |= (*r >= 0x8000) << 3;  /* N */
+  NZVC |= (*r == 0x0000) << 2;  /* Z */
+  NZVC |= c;                    /* C */
 
   (void)opspec;
 }
@@ -183,8 +228,8 @@ static void LDWr(byte inspec, word opspec) {
   *r = get_oprnd(inspec, opspec);
 
   NZVC &= 0x03;                 /* clear all but VC */
-  NZVC |= (*r & 0x8000) >> 12;  /* N */
-  NZVC |= (*r == 0) << 2;       /* Z */
+  NZVC |= (*r >= 0x8000) << 3;  /* N */
+  NZVC |= (*r == 0x0000) << 2;  /* Z */
 }
 
 static void LDBr(byte inspec, word opspec) {
@@ -217,9 +262,9 @@ static void LDBr(byte inspec, word opspec) {
 
   *r = (*r & 0xff00) | oprnd;
 
-  NZVC &= 0x03;           /* clear all but VC */
-                          /* N is 0 by definition of Pep/9 */
-  NZVC |= (*r == 0) << 2; /* Z */
+  NZVC &= 0x03;                 /* clear all but VC */
+                                /* N is 0 by definition of Pep/9 */
+  NZVC |= (*r == 0x0000) << 2;  /* Z */
 }
 
 static void STWr(byte inspec, word opspec) {
@@ -248,8 +293,8 @@ static void DECI(byte inspec, word opspec) {
   STW(get_addr(inspec, opspec), w);
 
   NZVC &= 0x01;                 /* clear all but C */
-  NZVC |= (w & 0x8000) >> 12;   /* N */
-  NZVC |= (w == 0) << 2;        /* Z */
+  NZVC |= (w >= 0x8000) << 3;   /* N */
+  NZVC |= (w == 0x0000) << 2;   /* Z */
   NZVC |= (i != (sword)w) << 1; /* V */
 
   assert((i >= -32768 && i <= 32767) || (NZVC & 0x02));
@@ -283,42 +328,39 @@ static void SUBSP(byte inspec, word opspec) {
 }
 
 static void ADDr(byte inspec, word opspec) {
-  word o, v;
+  byte v;
+  word o;
   word oprnd = get_oprnd(inspec, opspec);
   word *r = get_reg(inspec);
 
   o = *r;
   *r += oprnd;
 
-  /* Inspect the signs of the numbers and the sum. If you add numbers with
-   * different signs, you cannot have an overflow. If you add two numbers with
-   * the same sign and the result is not the same sign, then you have signed
-   * overflow. */
-  v = !((o & 0x8000) ^ (oprnd & 0x8000)) && ((o & 0x8000) ^ (*r & 0x8000));
+  v = SIGNED_WORD_OVERFLOW(o, oprnd, *r);
 
   NZVC = 0;                     /* clear all bits */
-  NZVC |= (*r & 0x8000) >> 12;  /* N */
-  NZVC |= (*r == 0) << 2;       /* Z */
+  NZVC |= (*r >= 0x8000) << 3;  /* N */
+  NZVC |= (*r == 0x0000) << 2;  /* Z */
   NZVC |= v << 1;               /* V */
-  NZVC |= (*r < o);             /* C */
+  NZVC |= *r < o;               /* C */ /* TODO is this correct */
 }
 
 static void SUBr(byte inspec, word opspec) {
-  word o, v;
-  word oprnd = ~get_oprnd(inspec, opspec) + 1;
+  byte v;
+  word o;
+  word oprnd = -get_oprnd(inspec, opspec);
   word *r = get_reg(inspec);
 
   o = *r;
   *r += oprnd;
 
-  /* See note in ADDr for explanation! */
-  v = !((o & 0x8000) ^ (oprnd & 0x8000)) && ((o & 0x8000) ^ (*r & 0x8000));
+  v = SIGNED_WORD_OVERFLOW(o, oprnd, *r);
 
   NZVC = 0;                     /* clear all bits */
-  NZVC |= (*r & 0x8000) >> 12;  /* N */
-  NZVC |= (*r == 0) << 2;       /* Z */
+  NZVC |= (*r >= 0x8000) << 3;  /* N */
+  NZVC |= (*r == 0x0000) << 2;  /* Z */
   NZVC |= v << 1;               /* V */
-  NZVC |= (*r < o);             /* C */
+  NZVC |= *r < o;               /* C */ /* TODO see not in ADDr */
 }
 
 static void ANDr(byte inspec, word opspec) {
@@ -327,8 +369,8 @@ static void ANDr(byte inspec, word opspec) {
   *r &= get_oprnd(inspec, opspec);;
 
   NZVC &= 0x03;                 /* clear all but VC */
-  NZVC |= (*r & 0x8000) >> 12;  /* N */
-  NZVC |= (*r == 0) << 2;       /* Z */
+  NZVC |= (*r >= 0x8000) << 3;  /* N */
+  NZVC |= (*r == 0x0000) << 2;  /* Z */
 }
 
 static void ORr(byte inspec, word opspec) {
@@ -337,26 +379,41 @@ static void ORr(byte inspec, word opspec) {
   *r |= get_oprnd(inspec, opspec);
 
   NZVC &= 0x03;                 /* clear all but VC */
-  NZVC |= (*r & 0x8000) >> 12;  /* N */
-  NZVC |= (*r == 0) << 2;       /* Z */
+  NZVC |= (*r >= 0x8000) << 3;  /* N */
+  NZVC |= (*r == 0x0000) << 2;  /* Z */
 }
 
 static void CPWr(byte inspec, word opspec) {
-  word o, w, v;
-  word oprnd = ~get_oprnd(inspec, opspec) + 1;
+  byte v;
+  word w;
+  word oprnd = -get_oprnd(inspec, opspec);
   word *r = get_reg(inspec);
 
-  o = *r;
   w = *r + oprnd;
 
-  /* See note in ADDr for explanation! */
-  v = !((o & 0x8000) ^ (oprnd & 0x8000)) && ((o & 0x8000) ^ (w & 0x8000));
+  v = SIGNED_WORD_OVERFLOW(*r, oprnd, w);
 
   NZVC = 0;                   /* clear all bits */
-  NZVC |= (w & 0x8000) >> 12; /* N */
-  NZVC |= (w == 0) << 2;      /* Z */
+  NZVC |= (w >= 0x8000) << 3; /* N */
+  NZVC |= (w == 0x0000) << 2; /* Z */
   NZVC |= v << 1;             /* V */
-  NZVC |= (w < o);            /* C */
+  NZVC |= w < *r;             /* C */ /* TODO see not in ADDr */
+}
+
+static void CPBr(byte inspec, word opspec) {
+  byte w, v;
+  byte rgstr = *get_reg(inspec) & 0x00ff;
+  byte oprnd = -((byte)(get_oprnd(inspec, opspec) >> 8));
+
+  w = rgstr + oprnd;
+
+  v = SIGNED_BYTE_OVERFLOW(rgstr, oprnd, w);
+
+  NZVC = 0;                 /* clear all bits */
+  NZVC |= (w & 0x80) >> 4;  /* N */
+  NZVC |= (w == 0) << 2;    /* Z */
+  NZVC |= v << 1;           /* V */
+  NZVC |= (w < rgstr);      /* C */
 }
 
 static void (*ops[256])(byte, word) = {
@@ -368,8 +425,8 @@ static void (*ops[256])(byte, word) = {
   /* MOVAFLG */ MOVAFLG,
   /* NOTr */    NOTr, NOTr,
   /* NEGr */    NEGr, NEGr,
-  /* ASLr */    NULL, NULL,
-  /* ASRr */    NULL, NULL,
+  /* ASLr */    ASLr, ASLr,
+  /* ASRr */    ASRr, ASRr,
   /* ROLr */    NULL, NULL,
   /* RORr */    NULL, NULL,
   /* BR */      BR,   BR,
@@ -400,8 +457,8 @@ static void (*ops[256])(byte, word) = {
                 ORr, ORr, ORr, ORr, ORr, ORr, ORr, ORr,
   /* CPWr */    CPWr, CPWr, CPWr, CPWr, CPWr, CPWr, CPWr, CPWr,
                 CPWr, CPWr, CPWr, CPWr, CPWr, CPWr, CPWr, CPWr,
-  /* CPBr */    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-                NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  /* CPBr */    CPBr, CPBr, CPBr, CPBr, CPBr, CPBr, CPBr, CPBr,
+                CPBr, CPBr, CPBr, CPBr, CPBr, CPBr, CPBr, CPBr,
   /* LDWr */    LDWr, LDWr, LDWr, LDWr, LDWr, LDWr, LDWr, LDWr,
                 LDWr, LDWr, LDWr, LDWr, LDWr, LDWr, LDWr, LDWr,
   /* LDBr */    LDBr, LDBr, LDBr, LDBr, LDBr, LDBr, LDBr, LDBr,
