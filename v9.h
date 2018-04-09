@@ -56,7 +56,9 @@ static struct {
   #define inline /* define to nothing if pre-C99 */
 #endif
 
+#define LDB(idx)    (Mem[(idx)])
 #define LDW(idx)    (word)(((word)Mem[(idx)] << 8) | ((word)Mem[(idx) + 1]))
+#define STB(idx, b) (Mem[(idx)] = (b))
 #define STW(idx, w) (Mem[(idx) + 0] = (w) >> 8, Mem[(idx) + 1] = (w) & 0x00ff)
 
 /* Inspect the signs of the numbers and the sum. If you add numbers with
@@ -326,7 +328,7 @@ static void STBr(byte inspec, word opspec) {
     printf("%c", b);
   }
   else {
-    Mem[op_addr] = b;
+    STB(op_addr, b);
   }
 }
 
@@ -359,8 +361,8 @@ static void HEXO(byte inspec, word opspec) {
 
 static void STRO(byte inspec, word opspec) {
   word op_addr = get_addr(inspec, opspec);
-  while ('\0' != Mem[op_addr]) {
-    printf("%c", Mem[op_addr++]);
+  while ('\0' != LDB(op_addr)) {
+    printf("%c", LDB(op_addr++));
   }
 }
 

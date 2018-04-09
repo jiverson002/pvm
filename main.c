@@ -54,7 +54,7 @@ static int read(char const * const filename) {
   OK(ret);
 
   for (i=0,j=0; i < len; i+=3,j++) {
-    Mem[j] = a2x[(int)buf[i+0]] * 16 + a2x[(int)buf[i+1]];
+    STB(j, a2x[(int)buf[i+0]] * 16 + a2x[(int)buf[i+1]]);
   }
 
   free(buf);
@@ -77,7 +77,7 @@ static int vonNeumann() {
 
   for (;;) {
     /* fetch instruction specifier */
-    InSpec = Mem[PC];
+    InSpec = LDB(PC);
     /*fprintf(stderr, "%.2X", InSpec);*/
 
     /* increment pc */
