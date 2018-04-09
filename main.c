@@ -67,8 +67,17 @@ notok:
   return -1;
 }
 
+/* TODO
+ * [ ] add -d flag for debugging mode which will print machine code
+ * [ ] add the ability to pass batch i/o on command line
+ */
 int main(int argc, char **argv) {
   int ret;
+
+  if (argc < 2) {
+    fprintf(stderr, "usage: pepvm file [- batch i/o]\n");
+    return EXIT_FAILURE;
+  }
 
   ret = read(argv[1]);
   OK(ret);
@@ -118,6 +127,4 @@ int main(int argc, char **argv) {
 
 notok:
   return EXIT_FAILURE;
-
-  (void)argc;
 }
