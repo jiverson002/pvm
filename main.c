@@ -69,27 +69,13 @@ notok:
   return -1;
 }
 
-/* TODO
- * [ ] add -d flag for debugging mode which will print machine code
- * [ ] add the ability to pass batch i/o on command line
- */
-int main(int argc, char **argv) {
-  int ret;
-
-  if (argc < 2) {
-    fprintf(stderr, "usage: pepvm file [- batch i/o]\n");
-    return EXIT_FAILURE;
-  }
-
-  ret = read(argv[1]);
-  OK(ret);
-
-  A  = 0;
-  X  = 0;
-  PC = 0;
+static int vonNeumann() {
+  A  = 0x0000;
+  X  = 0x0000;
+  PC = 0x0000;
   SP = SP_INIT;
-  InSpec = 0;
-  OpSpec = 0;
+  InSpec = 0x00;
+  OpSpec = 0x0000;
 
   for (;;) {
     /* fetch instruction specifier */
@@ -124,6 +110,27 @@ int main(int argc, char **argv) {
 
     /*fprintf(stderr, " %.4X %.4X %.4X %.4X %.1X\n", A, X, PC, SP, NZVC);*/
   }
+
+  return 0;
+}
+
+/* TODO
+ * [ ] add -d flag for debugging mode which will print machine code
+ * [ ] add the ability to pass batch i/o on command line
+ */
+int main(int argc, char **argv) {
+  int ret;
+
+  if (argc < 2) {
+    fprintf(stderr, "usage: pepvm file [- batch i/o]\n");
+    return EXIT_FAILURE;
+  }
+
+  ret = read(argv[1]);
+  OK(ret);
+
+  ret = vonNeumann();
+  OK(ret);
 
   return EXIT_SUCCESS;
 
