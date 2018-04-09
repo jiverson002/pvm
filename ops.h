@@ -12,7 +12,7 @@
   #define inline /* define to nothing if pre-C99 */
 #endif
 
-#define LDW(idx)    (((word)Mem[(idx)] << 8) | (word)Mem[(idx) + 1])
+#define LDW(idx)    (word)(((word)Mem[(idx)] << 8) | ((word)Mem[(idx) + 1]))
 #define STW(idx, w) (Mem[(idx) + 0] = (w) >> 8, Mem[(idx) + 1] = (w) & 0x00ff)
 
 /* Inspect the signs of the numbers and the sum. If you add numbers with
@@ -291,7 +291,7 @@ static void DECI(byte inspec, word opspec) {
   word w;
 
   scanf("%d", &i);
-  w = i;
+  w = (word)i;
 
   STW(get_addr(inspec, opspec), w);
 

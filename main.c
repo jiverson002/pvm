@@ -30,7 +30,8 @@ static int read(char const * const filename) {
   int ret, i, j;
   FILE *file;
   char *buf=NULL;
-  long len, num;
+  long len;
+  unsigned long num;
 
   file = fopen(filename, "rb");
   OK(NULL == file);
@@ -40,15 +41,16 @@ static int read(char const * const filename) {
 
   len = ftell(file);
   OK(-1 == len);
+  num = (unsigned long)len;
 
   ret = fseek(file, 0L, SEEK_SET);
   OK(ret);
 
-  buf = malloc((len + 1) * sizeof(*buf));
+  buf = malloc((num + 1) * sizeof(*buf));
   OK(NULL == buf);
 
-  num = fread(buf, 1, len, file);
-  OK(num != len);
+  num = fread(buf, 1, num, file);
+  OK(num != (unsigned long)len);
 
   ret = fclose(file);
   OK(ret);
