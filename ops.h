@@ -19,10 +19,10 @@
  * different signs, you cannot have an overflow. If you add two numbers with the
  * same sign and the result is not the same sign, then you have signed overflow.
  * */
-#define SIGNED_WORD_OVERFLOW(a, b, c) \
-  (!(((a) & 0x8000) ^ ((b) & 0x8000)) && (((a) & 0x8000) ^ ((c) & 0x8000)))
-#define SIGNED_BYTE_OVERFLOW(a, b, c) \
-  (!(((a) & 0x80) ^ ((b) & 0x80)) && (((a) & 0x80) ^ ((c) & 0x80)))
+#define SIGNED_OVERFLOW(a, b, c, m) \
+  (!(((a) & (m)) ^ ((b) & (m))) && (((a) & (m)) ^ ((c) & (m))))
+#define SIGNED_WORD_OVERFLOW(a, b, c) SIGNED_OVERFLOW(a, b, c, 0x8000)
+#define SIGNED_BYTE_OVERFLOW(a, b, c) SIGNED_OVERFLOW(a, b, c, 0x80)
 
 static inline int is_nonunary(byte in_spec) {
   return !(((in_spec) < 0x12) || (((in_spec) | 0x01) == 0x27));
