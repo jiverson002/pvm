@@ -6,5 +6,5 @@ WARNING  := -Wall -Wextra -pedantic -Wshadow -Wpointer-arith -Wcast-align \
             -Wuninitialized -Wconversion -Wstrict-prototypes
 CFLAGS   := $(OPTIMIZE) $(STANDARD) $(WARNING)
 
-pepvm.exe: main.c ops.h os.h types.h vm.h Makefile
+pepvm.exe: main.c v9.h Makefile
 	gcc -O0 $(CFLAGS) -o $@ main.c

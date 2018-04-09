@@ -1,12 +1,56 @@
-#ifndef OPS_H
-#define OPS_H 1
+#ifndef V9_H
+#define V9_H 1
 
+/******************************************************************************/
+/* Operating system specifics */
+/******************************************************************************/
+#define charIn  (0xfc15)
+#define charOut (0xfc16)
+
+#define SP_INIT (0xfb8f)
+
+/******************************************************************************/
+/* Machine types */
+/******************************************************************************/
+#include <stdint.h>
+
+typedef uint8_t  byte;
+typedef uint16_t word;
+typedef int8_t   sbyte;
+typedef int16_t  sword;
+
+/******************************************************************************/
+/* Virtual machine structure */
+/******************************************************************************/
+static struct {
+  struct {
+    byte nzvc;
+    word a;
+    word x;
+    word pc;
+    word sp;
+    byte inspec;
+    word opspec;
+  } cpu;
+
+  byte mem[(1 << 16) + 1]; /* allocate one-extra byte to allow for loads to
+                              always occur as words */
+} vm;
+
+#define NZVC   (vm.cpu.nzvc)
+#define A      (vm.cpu.a)
+#define X      (vm.cpu.x)
+#define PC     (vm.cpu.pc)
+#define SP     (vm.cpu.sp)
+#define InSpec (vm.cpu.inspec)
+#define OpSpec (vm.cpu.opspec)
+#define Mem    (vm.mem)
+
+/******************************************************************************/
+/* ISA implementation */
+/******************************************************************************/
 #include <assert.h>
 #include <stdio.h>
-
-#include "os.h"
-#include "types.h"
-#include "vm.h"
 
 #if __STDC_VERSION__ < 199901L
   #define inline /* define to nothing if pre-C99 */
@@ -472,4 +516,4 @@ static void (*ops[256])(byte, word) = {
                 STBr, STBr, STBr, STBr, STBr, STBr, STBr, STBr
 };
 
-#endif /* OPS_H */
+#endif /* V9_H */

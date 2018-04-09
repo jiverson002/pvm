@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "ops.h"
-#include "types.h"
-#include "vm.h"
+#include "v9.h"
 
 #define OK(err) if (err) { printf("notok@%d\n", __LINE__); goto notok; }
 
