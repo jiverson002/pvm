@@ -7,4 +7,4 @@ WARNING  := -Wall -Wextra -pedantic -Wshadow -Wpointer-arith -Wcast-align \
 CFLAGS   := $(OPTIMIZE) $(STANDARD) $(WARNING)
 
 pepvm.exe: main.c v9.h Makefile
-	gcc -O0 $(CFLAGS) -o $@ main.c
+	gcc $(CFLAGS) -o $@ main.c
