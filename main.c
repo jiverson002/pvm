@@ -104,7 +104,7 @@ static int vonNeumann() {
       /*fprintf(stderr, "\n");*/
       break;
     }
-    ops[InSpec](InSpec, OpSpec);
+    EXEC();
 
     /*fprintf(stderr, " %.4X %.4X %.4X %.4X %.1X\n", A, X, PC, SP, NZVC);*/
   }

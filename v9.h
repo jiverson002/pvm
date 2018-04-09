@@ -518,4 +518,6 @@ static void (*ops[256])(byte, word) = {
                 STBr, STBr, STBr, STBr, STBr, STBr, STBr, STBr
 };
 
+#define EXEC() ops[InSpec](InSpec, OpSpec)
+
 #endif /* V9_H */
