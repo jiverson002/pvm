@@ -282,29 +282,23 @@ static void LDWr(byte inspec, word opspec) {
 }
 
 static void LDBr(byte inspec, word opspec) {
-  byte b;
-  word oprnd, op_addr;
+  byte oprnd;
+  word op_addr;
   word *r = get_reg(inspec);
 
   switch (inspec | 0x08) {
-    case 0xd8: /* immediate */
-      oprnd = get_oprnd(inspec, opspec);
+    case 0xd8:  /* immediate */
+      oprnd = (byte)get_oprnd(inspec, opspec);
       break;
-    case 0xd9:  /* direct */
-    case 0xda:  /* indirect */
-    case 0xdb:  /* stack-relative */
-    case 0xdc:  /* stack-relative deferred */
-    case 0xdd:  /* indexed */
-    case 0xde:  /* stack-indexed */
-    case 0xdf:  /* stack-deferred indexed */
+    default:    /* direct, indirect, stack-relative, stack-relative deferred,
+                   indexed, stack-indexed, stack-deferred indexed */
       op_addr = get_addr(inspec, opspec);
       if (charIn == op_addr) {
-        scanf("%c", &b);
-        oprnd = b;
+        scanf("%c", &oprnd);
       } else {
         /* shift b/c two bytes were loaded and the high one is the one at the
          * desired address. */
-        oprnd = get_oprnd(inspec, opspec) >> 8;
+        oprnd = (byte)(get_oprnd(inspec, opspec) >> 8);
       }
       break;
   }
