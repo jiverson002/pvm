@@ -49,7 +49,6 @@ static struct {
 /******************************************************************************/
 /* ISA implementation */
 /******************************************************************************/
-#include <assert.h>
 #include <stdio.h>
 
 #if __STDC_VERSION__ < 199901L
@@ -278,7 +277,6 @@ static void LDWr(byte inspec, word opspec) {
 
 static void LDBr(byte inspec, word opspec) {
   byte oprnd;
-  word op_addr;
   word *r = get_reg(inspec);
 
   switch (inspec | 0x08) {
@@ -287,8 +285,7 @@ static void LDBr(byte inspec, word opspec) {
       break;
     default:    /* direct, indirect, stack-relative, stack-relative deferred,
                    indexed, stack-indexed, stack-deferred indexed */
-      op_addr = get_addr(inspec, opspec);
-      if (charIn == op_addr) {
+      if (charIn == get_addr(inspec, opspec)) {
         scanf("%c", &oprnd);
       } else {
         /* shift b/c two bytes were loaded and the high one is the one at the
@@ -334,10 +331,6 @@ static void DECI(byte inspec, word opspec) {
   NZVC |= (w >= 0x8000) << 3;   /* N */
   NZVC |= (w == 0x0000) << 2;   /* Z */
   NZVC |= (i != (sword)w) << 1; /* V */
-
-  assert((i >= -32768 && i <= 32767) || (NZVC & 0x02));
-  assert(((sword)w >= 0) || (NZVC & 0x08));
-  assert(((sword)w != 0) || (NZVC & 0x04));
 }
 
 static void DECO(byte inspec, word opspec) {
