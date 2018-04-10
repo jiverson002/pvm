@@ -86,7 +86,7 @@ static int vonNeumann() {
     /* fprintf(stderr, "%.2X", InSpec); */
 
     /* increment pc */
-    PC++;
+    PC += sizeof(byte);
 
     /* decode */
     /* NOOP */
@@ -98,7 +98,7 @@ static int vonNeumann() {
       /* fprintf(stderr, " %.4X", OpSpec); */
 
       /* increment pc */
-      PC += 2;
+      PC += sizeof(word);
     }
     else {
       /* fprintf(stderr, "     "); */
