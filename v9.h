@@ -229,51 +229,35 @@ static void BR(byte inspec, word opspec) {
 }
 
 static void BRLE(byte inspec, word opspec) {
-  if (NZVC & 0x0c) {
-    PC = get_oprnd(inspec, opspec);
-  }
+  PC = NZVC & 0x0c ? get_oprnd(inspec, opspec) : PC;
 }
 
 static void BRLT(byte inspec, word opspec) {
-  if (NZVC & 0x08) {
-    PC = get_oprnd(inspec, opspec);
-  }
+  PC = NZVC & 0x08 ? get_oprnd(inspec, opspec) : PC;
 }
 
 static void BREQ(byte inspec, word opspec) {
-  if (NZVC & 0x04) {
-    PC = get_oprnd(inspec, opspec);
-  }
+  PC = NZVC & 0x04 ? get_oprnd(inspec, opspec) : PC;
 }
 
 static void BRNE(byte inspec, word opspec) {
-  if (!(NZVC & 0x04)) {
-    PC = get_oprnd(inspec, opspec);
-  }
+  PC = !(NZVC & 0x04) ? get_oprnd(inspec, opspec) : PC;
 }
 
 static void BRGE(byte inspec, word opspec) {
-  if (!(NZVC & 0x0c)) {
-    PC = get_oprnd(inspec, opspec);
-  }
+  PC = !(NZVC & 0x0c) ? get_oprnd(inspec, opspec) : PC;
 }
 
 static void BRGT(byte inspec, word opspec) {
-  if (!(NZVC & 0x08)) {
-    PC = get_oprnd(inspec, opspec);
-  }
+  PC = !(NZVC & 0x08) ? get_oprnd(inspec, opspec) : PC;
 }
 
 static void BRV(byte inspec, word opspec) {
-  if (NZVC & 0x02) {
-    PC = get_oprnd(inspec, opspec);
-  }
+  PC = NZVC & 0x02 ? get_oprnd(inspec, opspec) : PC;
 }
 
 static void BRC(byte inspec, word opspec) {
-  if (NZVC & 0x01) {
-    PC = get_oprnd(inspec, opspec);
-  }
+  PC = NZVC & 0x01 ? get_oprnd(inspec, opspec) : PC;
 }
 
 static void CALL(byte inspec, word opspec) {
