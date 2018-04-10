@@ -94,15 +94,9 @@ static inline void stw(word idx, word w) {
 }
 
 static inline word *get_reg(byte inspec) {
-  if (inspec <= 0x11) {
-    if (0x00 == (inspec & 0x01)) {      /* accumulator */
-      return &A;
-    }
-    return &X;                          /* index */
-  } else if (0x00 == (inspec & 0x08)) { /* accumulator */
-    return &A;
-  }
-  return &X;                            /* index */
+  return inspec <= 0x11
+    ? (0x00 == (inspec & 0x01) ? &A : &X)
+    : (0x00 == (inspec & 0x08) ? &A : &X);
 }
 
 static inline word get_addr(byte inspec, word opspec) {
@@ -121,24 +115,15 @@ static inline word get_addr(byte inspec, word opspec) {
       return SP + opspec + X;
     case 0x07:  /* stack-deferred indexed */
       return ldw(SP + opspec) + X;
-    default:
-      return 0xffff; /* error */
+    default:    /* error */
+      return 0xffff;
   }
 }
 
 static inline word get_oprnd(byte inspec, word opspec) {
-  if (inspec <= 0x25) {
-    if (0x00 == (inspec & 0x01)) {
-      return opspec;                    /* immediate */
-    }
-    return ldw(opspec + X);             /* indexed */
-  } else if (0x00 == (inspec & 0x07)) {
-      return opspec;                    /* immediate */
-  }
-  return ldw(get_addr(inspec, opspec)); /* direct, indirect, stack-relative,
-                                           stack-relative deferred, indexed,
-                                           stack-indexed, stack-deferred indexed
-                                           */
+  return inspec <= 0x25
+    ? (0x00 == (inspec & 0x01) ? opspec : ldw(opspec + X))
+    : (0x00 == (inspec & 0x07) ? opspec : ldw(get_addr(inspec, opspec)));
 }
 
 static void RET(byte inspec, word opspec) {
