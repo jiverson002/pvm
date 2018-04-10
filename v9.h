@@ -81,7 +81,7 @@ static inline byte ldb(word idx) {
 }
 
 static inline word ldw(word idx) {
-  return (word)(((word)Mem[idx] << 8) | ((word)Mem[idx + 1]));
+  return (word)((Mem[idx] << 8) | Mem[idx + 1]);
 }
 
 static inline void stb(word idx, byte b) {
