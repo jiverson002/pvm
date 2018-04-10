@@ -60,22 +60,6 @@ static inline int is_nonunary(byte in_spec) {
   return !(((in_spec) < 0x12) || (((in_spec) | 0x01) == 0x27));
 }
 
-static inline byte is_signed_overflow(word a, word b, word c, word m) {
-  /* Inspect the signs of the numbers and the sum. If you add numbers with
-   * different signs, you cannot have an overflow. If you add two numbers with
-   * the same sign and the result is not the same sign, then you have signed
-   * overflow. */
-  return !((a & m) ^ (b & m)) && ((a & m) ^ (c & m));
-}
-
-static inline byte is_signed_byte_overflow(byte a, byte b, byte c) {
-  return is_signed_overflow(a, b, c, 0x0080);
-}
-
-static inline byte is_signed_word_overflow(word a, word b, word c) {
-  return is_signed_overflow(a, b, c, 0x8000);
-}
-
 static inline byte ldb(word idx) {
   return Mem[idx];
 }
@@ -91,6 +75,28 @@ static inline void stb(word idx, byte b) {
 static inline void stw(word idx, word w) {
   Mem[idx + 0] = (byte)(w >> 8);
   Mem[idx + 1] = (byte)(w & 0x00ff);
+}
+
+static word add(word a, word b) {
+  byte v;
+  word c;
+
+  c = a;
+  a += b;
+
+  /* Inspect the signs of the numbers and the sum. If you add numbers with
+   * different signs, you cannot have an overflow. If you add two numbers with
+   * the same sign and the result is not the same sign, then you have signed
+   * overflow. */
+  v = !((c & 0x8000) ^ (b & 0x8000)) && ((c & 0x8000) ^ (a & 0x8000));
+
+  NZVC = 0;                   /* clear all bits */
+  NZVC |= (a >= 0x8000) << 3; /* N */
+  NZVC |= (a == 0x0000) << 2; /* Z */
+  NZVC |= v << 1;             /* V */
+  NZVC |= a < c;              /* C */ /* TODO is this correct */
+
+  return a;
 }
 
 static inline word *get_reg(byte inspec) {
@@ -376,39 +382,15 @@ static void SUBSP(byte inspec, word opspec) {
 }
 
 static void ADDr(byte inspec, word opspec) {
-  byte v;
-  word o;
-  word oprnd = get_oprnd(inspec, opspec);
   word *r = get_reg(inspec);
 
-  o = *r;
-  *r += oprnd;
-
-  v = is_signed_word_overflow(o, oprnd, *r);
-
-  NZVC = 0;                     /* clear all bits */
-  NZVC |= (*r >= 0x8000) << 3;  /* N */
-  NZVC |= (*r == 0x0000) << 2;  /* Z */
-  NZVC |= v << 1;               /* V */
-  NZVC |= *r < o;               /* C */ /* TODO is this correct */
+  *r = add(*r, get_oprnd(inspec, opspec));
 }
 
 static void SUBr(byte inspec, word opspec) {
-  byte v;
-  word o;
-  word oprnd = -get_oprnd(inspec, opspec);
   word *r = get_reg(inspec);
 
-  o = *r;
-  *r += oprnd;
-
-  v = is_signed_word_overflow(o, oprnd, *r);
-
-  NZVC = 0;                     /* clear all bits */
-  NZVC |= (*r >= 0x8000) << 3;  /* N */
-  NZVC |= (*r == 0x0000) << 2;  /* Z */
-  NZVC |= v << 1;               /* V */
-  NZVC |= *r < o;               /* C */ /* TODO see not in ADDr */
+  *r = add(*r, -get_oprnd(inspec, opspec));
 }
 
 static void ANDr(byte inspec, word opspec) {
@@ -432,36 +414,12 @@ static void ORr(byte inspec, word opspec) {
 }
 
 static void CPWr(byte inspec, word opspec) {
-  byte v;
-  word w;
-  word oprnd = -get_oprnd(inspec, opspec);
-  word *r = get_reg(inspec);
-
-  w = *r + oprnd;
-
-  v = is_signed_word_overflow(*r, oprnd, w);
-
-  NZVC = 0;                   /* clear all bits */
-  NZVC |= (w >= 0x8000) << 3; /* N */
-  NZVC |= (w == 0x0000) << 2; /* Z */
-  NZVC |= v << 1;             /* V */
-  NZVC |= w < *r;             /* C */ /* TODO see not in ADDr */
+  (void)add(*get_reg(inspec), get_oprnd(inspec, opspec));
 }
 
 static void CPBr(byte inspec, word opspec) {
-  byte w, v;
-  byte rgstr = *get_reg(inspec) & 0x00ff;
-  byte oprnd = -((byte)(get_oprnd(inspec, opspec) >> 8));
-
-  w = rgstr + oprnd;
-
-  v = is_signed_byte_overflow(rgstr, oprnd, w);
-
-  NZVC = 0;                 /* clear all bits */
-  NZVC |= (w & 0x80) >> 4;  /* N */
-  NZVC |= (w == 0) << 2;    /* Z */
-  NZVC |= v << 1;           /* V */
-  NZVC |= (w < rgstr);      /* C */
+  /* TODO is this correct? */
+  (void)add((word)(*get_reg(inspec) << 8), ~(get_oprnd(inspec, opspec) & 0xff00) + 0x0100);
 }
 
 static void (*ops[256])(byte, word) = {
