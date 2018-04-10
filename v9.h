@@ -223,6 +223,36 @@ static void ASRr(byte inspec, word opspec) {
   (void)opspec;
 }
 
+static void ROLr(byte inspec, word opspec) {
+  byte c;
+  word *r = get_reg(inspec);
+
+  /* check if r<0> is 1  */
+  c = *r >= 0x8000;
+
+  *r = (word)((*r << 1) | (NZVC & 0x0001));
+
+  NZVC &= 0x0e;                 /* clear all but NZV */
+  NZVC |= c;                    /* C */
+
+  (void)opspec;
+}
+
+static void RORr(byte inspec, word opspec) {
+  byte c;
+  word *r = get_reg(inspec);
+
+  /* check if r<15> is 1  */
+  c = *r & 0x0001;
+
+  *r = (word)(((NZVC & 0x0001) << 15) | (*r >> 1));
+
+  NZVC &= 0x0e;                 /* clear all but NZV */
+  NZVC |= c;                    /* C */
+
+  (void)opspec;
+}
+
 static void BR(byte inspec, word opspec) {
   PC = get_oprnd(inspec, opspec);
 }
@@ -410,8 +440,8 @@ static void (*ops[256])(byte, word) = {
   /* NEGr */    NEGr, NEGr,
   /* ASLr */    ASLr, ASLr,
   /* ASRr */    ASRr, ASRr,
-  /* ROLr */    NULL, NULL,
-  /* RORr */    NULL, NULL,
+  /* ROLr */    ROLr, ROLr,
+  /* RORr */    RORr, RORr,
   /* BR */      BR,   BR,
   /* BRLE */    BRLE, BRLE,
   /* BRLT */    BRLT, BRLT,
