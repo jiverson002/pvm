@@ -57,7 +57,7 @@ static struct {
 #endif
 
 static inline int is_nonunary(byte in_spec) {
-  return !(((in_spec) < 0x12) || (((in_spec) | 0x01) == 0x27));
+  return !((in_spec < 0x12) || (0x27 == (in_spec | 0x01)));
 }
 
 static inline byte ldb(word idx) {
@@ -77,7 +77,7 @@ static inline void stw(word idx, word w) {
   Mem[idx + 1] = (byte)(w & 0x00ff);
 }
 
-static word add(word a, word b) {
+static inline word add(word a, word b) {
   byte v;
   word c;
 
