@@ -192,7 +192,7 @@ static void ASLr(byte inspec, word opspec) {
   word *r = get_reg(inspec);
 
   /* check if r<0..1> is 01 or 10 */
-  v = ((*r >= 0x4000) && (*r < 0x8000)) || ((*r >= 0x8000) && (*r < 0xc000));
+  v = ((*r < 0x8000) && (*r >= 0x4000)) || ((*r >= 0x8000) && (*r < 0xc000));
   /* check if r<0> is 1 */
   c = *r >= 0x8000;
 
