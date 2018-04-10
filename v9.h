@@ -131,6 +131,11 @@ static inline word get_oprnd(byte inspec, word opspec) {
     : (0x00 == (inspec & 0x07) ? opspec : ldw(get_addr(inspec, opspec)));
 }
 
+static inline void STOP(byte inspec, word opspec) {
+  (void)inspec;
+  (void)opspec;
+}
+
 static void RET(byte inspec, word opspec) {
   PC = ldw(SP);
   SP += 2;
@@ -430,7 +435,7 @@ static void CPBr(byte inspec, word opspec) {
 }
 
 static void (*ops[256])(byte, word) = {
-  /* STOP */    NULL,
+  /* STOP */    STOP,
   /* RET */     RET,
   /* RETTR */   NULL,
   /* MOVSPA */  MOVSPA,
@@ -482,6 +487,10 @@ static void (*ops[256])(byte, word) = {
                 STBr, STBr, STBr, STBr, STBr, STBr, STBr, STBr
 };
 
-#define EXEC() ops[InSpec](InSpec, OpSpec)
+static inline byte eval() {
+  ops[InSpec](InSpec, OpSpec);
+
+  return InSpec;
+}
 
 #endif /* V9_H */

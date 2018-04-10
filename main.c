@@ -25,7 +25,8 @@ static byte a2x[256] = {
 };
 
 static int read(char const * const filename) {
-  int ret, i, j;
+  int ret, i;
+  word j;
   FILE *file;
   char *buf=NULL;
   long len;
@@ -54,7 +55,7 @@ static int read(char const * const filename) {
   OK(ret);
 
   for (i=0,j=0; i < len; i+=3,j++) {
-    stb((word)j, a2x[(int)buf[i+0]] * 16 + a2x[(int)buf[i+1]]);
+    stb(j, a2x[(int)buf[i+0]] * 16 + a2x[(int)buf[i+1]]);
   }
 
   free(buf);
@@ -75,10 +76,14 @@ static int vonNeumann() {
   InSpec = 0x00;
   OpSpec = 0x0000;
 
-  for (;;) {
+  /* fprintf(stderr, "       "); */
+
+  do {
+    /* fprintf(stderr, " %.4X %.4X %.4X %.4X %.1X\n", A, X, PC, SP, NZVC); */
+
     /* fetch instruction specifier */
     InSpec = ldb(PC);
-    /*fprintf(stderr, "%.2X", InSpec);*/
+    /* fprintf(stderr, "%.2X", InSpec); */
 
     /* increment pc */
     PC++;
@@ -90,24 +95,19 @@ static int vonNeumann() {
     if (is_nonunary(InSpec)) {
       /* fetch operand specifier */
       OpSpec = ldw(PC);
-      /*fprintf(stderr, " %.4X", OpSpec);*/
+      /* fprintf(stderr, " %.4X", OpSpec); */
 
       /* increment pc */
       PC += 2;
     }
-    /*else {
-      fprintf(stderr, "     ");
-    }*/
+    else {
+      /* fprintf(stderr, "     "); */
+    }
 
     /* execute */
-    if (/* STOP */0x00 == InSpec) {
-      /*fprintf(stderr, "\n");*/
-      break;
-    }
-    EXEC();
+  } while (eval());
 
-    /*fprintf(stderr, " %.4X %.4X %.4X %.4X %.1X\n", A, X, PC, SP, NZVC);*/
-  }
+  /* fprintf(stderr, " %.4X %.4X %.4X %.4X %.1X\n", A, X, PC, SP, NZVC); */
 
   return 0;
 }
