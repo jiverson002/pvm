@@ -487,7 +487,7 @@ static void (*ops[256])(byte, word) = {
                 STBr, STBr, STBr, STBr, STBr, STBr, STBr, STBr
 };
 
-static inline byte eval() {
+static inline byte execute() {
   ops[InSpec](InSpec, OpSpec);
 
   return InSpec;

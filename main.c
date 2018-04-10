@@ -76,14 +76,14 @@ static int vonNeumann() {
   InSpec = 0x00;
   OpSpec = 0x0000;
 
-  /* fprintf(stderr, "       "); */
+  /*fprintf(stderr, "       ");*/
 
   do {
-    /* fprintf(stderr, " %.4X %.4X %.4X %.4X %.1X\n", A, X, PC, SP, NZVC); */
+    /*fprintf(stderr, " %.4X %.4X %.4X %.4X %.1X\n", A, X, PC, SP, NZVC);*/
 
     /* fetch instruction specifier */
     InSpec = ldb(PC);
-    /* fprintf(stderr, "%.2X", InSpec); */
+    /*fprintf(stderr, "%.2X", InSpec);*/
 
     /* increment pc */
     PC += sizeof(byte);
@@ -95,19 +95,19 @@ static int vonNeumann() {
     if (is_nonunary(InSpec)) {
       /* fetch operand specifier */
       OpSpec = ldw(PC);
-      /* fprintf(stderr, " %.4X", OpSpec); */
+      /*fprintf(stderr, " %.4X", OpSpec);*/
 
       /* increment pc */
       PC += sizeof(word);
     }
-    else {
-      /* fprintf(stderr, "     "); */
-    }
+    /*else {
+      fprintf(stderr, "     ");
+    }*/
 
     /* execute */
-  } while (eval());
+  } while (execute());
 
-  /* fprintf(stderr, " %.4X %.4X %.4X %.4X %.1X\n", A, X, PC, SP, NZVC); */
+  /*fprintf(stderr, " %.4X %.4X %.4X %.4X %.1X\n", A, X, PC, SP, NZVC);*/
 
   return 0;
 }
