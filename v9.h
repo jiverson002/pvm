@@ -56,22 +56,41 @@ static struct {
   #define inline /* define to nothing if pre-C99 */
 #endif
 
-#define LDB(idx)    (Mem[(idx)])
-#define LDW(idx)    (word)(((word)Mem[(idx)] << 8) | ((word)Mem[(idx) + 1]))
-#define STB(idx, b) (Mem[(idx)] = (b))
-#define STW(idx, w) (Mem[(idx) + 0] = (w) >> 8, Mem[(idx) + 1] = (w) & 0x00ff)
-
-/* Inspect the signs of the numbers and the sum. If you add numbers with
- * different signs, you cannot have an overflow. If you add two numbers with the
- * same sign and the result is not the same sign, then you have signed overflow.
- * */
-#define SIGNED_OVERFLOW(a, b, c, m) \
-  (!(((a) & (m)) ^ ((b) & (m))) && (((a) & (m)) ^ ((c) & (m))))
-#define SIGNED_WORD_OVERFLOW(a, b, c) SIGNED_OVERFLOW(a, b, c, 0x8000)
-#define SIGNED_BYTE_OVERFLOW(a, b, c) SIGNED_OVERFLOW(a, b, c, 0x80)
-
 static inline int is_nonunary(byte in_spec) {
   return !(((in_spec) < 0x12) || (((in_spec) | 0x01) == 0x27));
+}
+
+static inline byte is_signed_overflow(word a, word b, word c, word m) {
+  /* Inspect the signs of the numbers and the sum. If you add numbers with
+   * different signs, you cannot have an overflow. If you add two numbers with
+   * the same sign and the result is not the same sign, then you have signed
+   * overflow. */
+  return !((a & m) ^ (b & m)) && ((a & m) ^ (c & m));
+}
+
+static inline byte is_signed_byte_overflow(byte a, byte b, byte c) {
+  return is_signed_overflow(a, b, c, 0x0080);
+}
+
+static inline byte is_signed_word_overflow(word a, word b, word c) {
+  return is_signed_overflow(a, b, c, 0x8000);
+}
+
+static inline byte ldb(word idx) {
+  return Mem[idx];
+}
+
+static inline word ldw(word idx) {
+  return (word)(((word)Mem[idx] << 8) | ((word)Mem[idx + 1]));
+}
+
+static inline void stb(word idx, byte b) {
+  Mem[idx] = b;
+}
+
+static inline void stw(word idx, word w) {
+  Mem[idx + 0] = (byte)(w >> 8);
+  Mem[idx + 1] = (byte)(w & 0x00ff);
 }
 
 static inline word *get_reg(byte inspec) {
@@ -91,17 +110,17 @@ static inline word get_addr(byte inspec, word opspec) {
     case 0x01:  /* direct */
       return opspec;
     case 0x02:  /* indirect */
-      return LDW(opspec);
+      return ldw(opspec);
     case 0x03:  /* stack-relative */
       return SP + opspec;
     case 0x04:  /* stack-relative deferred */
-      return LDW(SP + opspec);
+      return ldw(SP + opspec);
     case 0x05:  /* indexed */
       return opspec + X;
     case 0x06:  /* stack-indexed */
       return SP + opspec + X;
     case 0x07:  /* stack-deferred indexed */
-      return LDW(SP + opspec) + X;
+      return ldw(SP + opspec) + X;
   }
   return 0xffff; /* error */
 }
@@ -111,18 +130,18 @@ static inline word get_oprnd(byte inspec, word opspec) {
     if (0x00 == (inspec & 0x01)) {
       return opspec;                    /* immediate */
     }
-    return LDW(opspec + X);             /* indexed */
+    return ldw(opspec + X);             /* indexed */
   } else if (0x00 == (inspec & 0x07)) {
       return opspec;                    /* immediate */
   }
-  return LDW(get_addr(inspec, opspec)); /* direct, indirect, stack-relative,
+  return ldw(get_addr(inspec, opspec)); /* direct, indirect, stack-relative,
                                            stack-relative deferred, indexed,
                                            stack-indexed, stack-deferred indexed
                                            */
 }
 
 static void RET(byte inspec, word opspec) {
-  PC = LDW(SP);
+  PC = ldw(SP);
   SP += 2;
 
   (void)inspec;
@@ -267,7 +286,7 @@ static void BRC(byte inspec, word opspec) {
 
 static void CALL(byte inspec, word opspec) {
   SP -= 2;
-  STW(SP, PC);
+  stw(SP, PC);
   PC = get_oprnd(inspec, opspec);
 }
 
@@ -311,7 +330,7 @@ static void LDBr(byte inspec, word opspec) {
 }
 
 static void STWr(byte inspec, word opspec) {
-  STW(get_addr(inspec, opspec), *get_reg(inspec));
+  stw(get_addr(inspec, opspec), *get_reg(inspec));
 }
 
 static void STBr(byte inspec, word opspec) {
@@ -322,7 +341,7 @@ static void STBr(byte inspec, word opspec) {
     printf("%c", b);
   }
   else {
-    STB(op_addr, b);
+    stb(op_addr, b);
   }
 }
 
@@ -333,7 +352,7 @@ static void DECI(byte inspec, word opspec) {
   scanf("%d", &i);
   w = (word)i;
 
-  STW(get_addr(inspec, opspec), w);
+  stw(get_addr(inspec, opspec), w);
 
   NZVC &= 0x01;                 /* clear all but C */
   NZVC |= (w >= 0x8000) << 3;   /* N */
@@ -355,8 +374,8 @@ static void HEXO(byte inspec, word opspec) {
 
 static void STRO(byte inspec, word opspec) {
   word op_addr = get_addr(inspec, opspec);
-  while ('\0' != LDB(op_addr)) {
-    printf("%c", LDB(op_addr++));
+  while ('\0' != ldb(op_addr)) {
+    printf("%c", ldb(op_addr++));
   }
 }
 
@@ -379,7 +398,7 @@ static void ADDr(byte inspec, word opspec) {
   o = *r;
   *r += oprnd;
 
-  v = SIGNED_WORD_OVERFLOW(o, oprnd, *r);
+  v = is_signed_word_overflow(o, oprnd, *r);
 
   NZVC = 0;                     /* clear all bits */
   NZVC |= (*r >= 0x8000) << 3;  /* N */
@@ -397,7 +416,7 @@ static void SUBr(byte inspec, word opspec) {
   o = *r;
   *r += oprnd;
 
-  v = SIGNED_WORD_OVERFLOW(o, oprnd, *r);
+  v = is_signed_word_overflow(o, oprnd, *r);
 
   NZVC = 0;                     /* clear all bits */
   NZVC |= (*r >= 0x8000) << 3;  /* N */
@@ -434,7 +453,7 @@ static void CPWr(byte inspec, word opspec) {
 
   w = *r + oprnd;
 
-  v = SIGNED_WORD_OVERFLOW(*r, oprnd, w);
+  v = is_signed_word_overflow(*r, oprnd, w);
 
   NZVC = 0;                   /* clear all bits */
   NZVC |= (w >= 0x8000) << 3; /* N */
@@ -450,7 +469,7 @@ static void CPBr(byte inspec, word opspec) {
 
   w = rgstr + oprnd;
 
-  v = SIGNED_BYTE_OVERFLOW(rgstr, oprnd, w);
+  v = is_signed_byte_overflow(rgstr, oprnd, w);
 
   NZVC = 0;                 /* clear all bits */
   NZVC |= (w & 0x80) >> 4;  /* N */

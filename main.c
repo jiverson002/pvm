@@ -54,7 +54,7 @@ static int read(char const * const filename) {
   OK(ret);
 
   for (i=0,j=0; i < len; i+=3,j++) {
-    STB(j, a2x[(int)buf[i+0]] * 16 + a2x[(int)buf[i+1]]);
+    stb((word)j, a2x[(int)buf[i+0]] * 16 + a2x[(int)buf[i+1]]);
   }
 
   free(buf);
@@ -77,7 +77,7 @@ static int vonNeumann() {
 
   for (;;) {
     /* fetch instruction specifier */
-    InSpec = LDB(PC);
+    InSpec = ldb(PC);
     /*fprintf(stderr, "%.2X", InSpec);*/
 
     /* increment pc */
@@ -89,7 +89,7 @@ static int vonNeumann() {
     /* if non-unary */
     if (is_nonunary(InSpec)) {
       /* fetch operand specifier */
-      OpSpec = LDW(PC);
+      OpSpec = ldw(PC);
       /*fprintf(stderr, " %.4X", OpSpec);*/
 
       /* increment pc */
