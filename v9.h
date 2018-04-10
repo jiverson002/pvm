@@ -121,8 +121,9 @@ static inline word get_addr(byte inspec, word opspec) {
       return SP + opspec + X;
     case 0x07:  /* stack-deferred indexed */
       return ldw(SP + opspec) + X;
+    default:
+      return 0xffff; /* error */
   }
-  return 0xffff; /* error */
 }
 
 static inline word get_oprnd(byte inspec, word opspec) {
