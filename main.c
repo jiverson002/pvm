@@ -5,7 +5,7 @@
 
 #define OK(err) if (err) { printf("notok@%d\n", __LINE__); goto notok; }
 
-static byte a2x[256] = {
+static char a2x[256] = {
   0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, /*   0 -  15 */
   0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, /*  16 -  31 */
   0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, /*  32 -  47 */
@@ -25,10 +25,10 @@ static byte a2x[256] = {
 };
 
 static int read(char const * const filename) {
-  int ret, i;
-  word j;
+  int ret;
+  unsigned i, j;
   FILE *file;
-  char *buf=NULL;
+  unsigned char *buf = NULL;
   long len;
   unsigned long num;
 
@@ -54,8 +54,8 @@ static int read(char const * const filename) {
   ret = fclose(file);
   OK(ret);
 
-  for (i=0,j=0; i < len; i+=3,j++) {
-    stb(j, a2x[(int)buf[i+0]] * 16 + a2x[(int)buf[i+1]]);
+  for (i=0,j=0; i < num; i+=3,j++) {
+    vm_stbi(j, a2x[buf[i+0]] * 16 + a2x[buf[i+1]]);
   }
 
   free(buf);
@@ -68,48 +68,18 @@ notok:
   return -1;
 }
 
-static int vonNeumann() {
-  A  = 0x0000;
-  X  = 0x0000;
-  PC = 0x0000;
-  SP = SP_INIT;
-  InSpec = 0x00;
-  OpSpec = 0x0000;
+static int von_neumann() {
+  int ret;
+  
+  ret = vm_init();
+  OK(ret);
 
-  /*fprintf(stderr, "       ");*/
-
-  do {
-    /*fprintf(stderr, " %.4X %.4X %.4X %.4X %.1X\n", A, X, PC, SP, NZVC);*/
-
-    /* fetch instruction specifier */
-    InSpec = ldb(PC);
-    /*fprintf(stderr, "%.2X", InSpec);*/
-
-    /* increment pc */
-    PC += sizeof(byte);
-
-    /* decode */
-    /* NOOP */
-
-    /* if non-unary */
-    if (is_nonunary(InSpec)) {
-      /* fetch operand specifier */
-      OpSpec = ldw(PC);
-      /*fprintf(stderr, " %.4X", OpSpec);*/
-
-      /* increment pc */
-      PC += sizeof(word);
-    }
-    /*else {
-      fprintf(stderr, "     ");
-    }*/
-
-    /* execute */
-  } while (execute());
-
-  /*fprintf(stderr, " %.4X %.4X %.4X %.4X %.1X\n", A, X, PC, SP, NZVC);*/
+  while (vm_step());
 
   return 0;
+
+notok:
+  return -1;
 }
 
 /* TODO
@@ -127,7 +97,7 @@ int main(int argc, char **argv) {
   ret = read(argv[1]);
   OK(ret);
 
-  ret = vonNeumann();
+  ret = von_neumann();
   OK(ret);
 
   return EXIT_SUCCESS;
