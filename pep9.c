@@ -323,7 +323,7 @@ static void LDBr(byte ir, word opspec) {
       break;
     default:    /* direct, indirect, stack-relative, stack-relative deferred,
                    indexed, stack-indexed, stack-deferred indexed */
-      if (charIn == get_addr(ir, opspec)) {
+      if (ldw(charIn) == get_addr(ir, opspec)) {
         scanf("%c", &oprnd);
       } else {
         /* shift b/c two bytes were loaded and the high one is the one at the
@@ -348,7 +348,7 @@ static void STBr(byte ir, word opspec) {
   byte b = *get_reg(ir) & 0x00ff;
   word op_addr = get_addr(ir, opspec);
 
-  if (charOut == op_addr) {
+  if (ldw(charOut) == op_addr) {
     printf("%c", b);
   }
   else {
@@ -512,6 +512,10 @@ static int init(void) {
   SP = SP_INIT;
   IR = 0x00;
   OpSpec = 0x0000;
+
+  /* temporary */
+  stw(charIn, 0xfc15);
+  stw(charOut, 0xfc16);
 
   return 0;
 }
