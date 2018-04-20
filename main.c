@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "v9.h"
+#include "pep9.h"
+#include "vm.h"
 
 #define OK(err) if (err) { printf("notok@%d\n", __LINE__); goto notok; }
+
+struct vm pepvm;
 
 static char a2x[256] = {
   0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, /*   0 -  15 */
@@ -55,7 +58,7 @@ static int read(char const * const filename) {
   OK(ret);
 
   for (i=0,j=0; i < num; i+=3,j++) {
-    vm_stbi(j, a2x[buf[i+0]] * 16 + a2x[buf[i+1]]);
+    pepvm.stbi(j, a2x[buf[i+0]] * 16 + a2x[buf[i+1]]);
   }
 
   free(buf);
@@ -71,10 +74,10 @@ notok:
 static int von_neumann() {
   int ret;
   
-  ret = vm_init();
+  ret = pepvm.init();
   OK(ret);
 
-  while (vm_step());
+  while (pepvm.step());
 
   return 0;
 
@@ -93,6 +96,8 @@ int main(int argc, char **argv) {
     fprintf(stderr, "usage: pepvm file [- batch i/o]\n");
     return EXIT_FAILURE;
   }
+
+  pepvm = pep9;
 
   ret = read(argv[1]);
   OK(ret);
