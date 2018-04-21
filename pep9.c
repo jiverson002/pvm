@@ -13,14 +13,13 @@ typedef int16_t  sword;
 /******************************************************************************/
 /* System vectors */
 /******************************************************************************/
-#define dot_burn  (0xffff)
-#define osRAM     (dot_burn - 11)
-#define wordTemp  (dot_burn - 9)
-#define charIn    (dot_burn - 7)
-#define charOut   (dot_burn - 5)
-#define loader    (dot_burn - 3)
-#define trap      (dot_burn - 1)
-#define SP_INIT   (0xfb8f)
+static word burn_addr = 0x0000;
+#define osRAM     (burn_addr - 11)
+#define wordTemp  (burn_addr - 9)
+#define charIn    (burn_addr - 7)
+#define charOut   (burn_addr - 5)
+#define loader    (burn_addr - 3)
+#define trap      (burn_addr - 1)
 
 /******************************************************************************/
 /* Virtual machine structure */
@@ -461,8 +460,27 @@ static void (*ops[256])(void) = {
 /******************************************************************************/
 #include <string.h>
 
+static int burn(void *os, unsigned os_len, unsigned addr) {
+  if (!os)
+    return -1;
+  if (os_len > 0x10000)
+    return -1;
+  if (addr > 0xffff)
+    return -1;
+  if (addr < os_len)
+    return -1;
+
+  /* record burn_addr */
+  burn_addr = (word)addr;
+
+  /* load os into memory */
+  memcpy(Mem + burn_addr - (os_len - 1), os, os_len);
+
+  return 0;
+}
+
 static int init(void) {
-  byte default_os[] = {
+  unsigned char default_os[] = {
     0xC8, 0x00, 0x00, 0xD1, 0xFC, 0x15, 0xB0, 0x00, 0x7A, 0x18, 0xFC, 0x51,
     0xB0, 0x00, 0x39, 0x14, 0xFC, 0x2C, 0x60, 0x00, 0x09, 0x0A, 0x0A, 0x0A,
     0x0A, 0xF1, 0xFC, 0x10, 0xD1, 0xFC, 0x15, 0xB0, 0x00, 0x39, 0x14, 0xFC,
@@ -548,16 +566,22 @@ static int init(void) {
     0x01, 0x12, 0xFF, 0xE4, 0x01, 0xFB, 0x8F, 0xFC, 0x0F, 0xFC, 0x15, 0xFC,
     0x16, 0xFC, 0x17, 0xFC, 0x52
   };
+  int err = 0;
 
+  /* install default os if no other os has been installed */
+  if (0x0000 == burn_addr) {
+    err = burn(default_os, sizeof(default_os), 0xffff);
+    if (err)
+      return -1;
+  }
+
+  /* setup cpu registers */
   A  = 0x0000;
   X  = 0x0000;
   PC = 0x0000;
-  SP = SP_INIT;
+  SP = ldw(osRAM);
   IR = 0x00;
   OpSpec = 0x0000;
-
-  /* load default os into memory */
-  memcpy(Mem + dot_burn - (sizeof(default_os) - 1), default_os, sizeof(default_os));
 
   return 0;
 }
@@ -597,4 +621,4 @@ static int step(void) {
   return IR;
 }
 
-struct vm pep9 = { init, stbi, step };
+struct vm pep9 = { burn, init, stbi, step };
