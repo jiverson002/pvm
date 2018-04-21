@@ -7,8 +7,6 @@
 
 typedef uint8_t  byte;
 typedef uint16_t word;
-typedef int8_t   sbyte;
-typedef int16_t  sword;
 
 /******************************************************************************/
 /* System vectors */
@@ -402,7 +400,7 @@ static void TRAP(void) {
             the book is published already!) */
 }
 
-static void (*ops[256])(void) = {
+static void (*i2f[256])(void) = {
   /* STOP */    STOP,
   /* RET */     RET,
   /* RETTR */   RETTR,
@@ -615,7 +613,7 @@ static int step(void) {
   }
 
   /* execute */
-  ops[IR]();
+  i2f[IR]();
 
   /* return 0 only if IR == STOP(0x0000) */
   return IR;
