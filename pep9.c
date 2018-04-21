@@ -127,7 +127,11 @@ static inline word get_addr(void) {
   }
 }
 
-static inline word get_oprnd(void) {
+static inline byte get_byte_oprnd(void) {
+  return (0x00 == (IR & 0x07) ? (byte)OpSpec : ldb(get_addr()));
+}
+
+static inline word get_word_oprnd(void) {
   return IR <= 0x25
     ? (0x00 == (IR & 0x01) ? OpSpec : ldw(OpSpec + X))
     : (0x00 == (IR & 0x07) ? OpSpec : ldw(get_addr()));
@@ -243,51 +247,51 @@ static void RORr(void) {
 }
 
 static void BR(void) {
-  PC = get_oprnd();
+  PC = get_word_oprnd();
 }
 
 static void BRLE(void) {
-  PC = NZVC & 0x0c ? get_oprnd() : PC;
+  PC = NZVC & 0x0c ? get_word_oprnd() : PC;
 }
 
 static void BRLT(void) {
-  PC = NZVC & 0x08 ? get_oprnd() : PC;
+  PC = NZVC & 0x08 ? get_word_oprnd() : PC;
 }
 
 static void BREQ(void) {
-  PC = NZVC & 0x04 ? get_oprnd() : PC;
+  PC = NZVC & 0x04 ? get_word_oprnd() : PC;
 }
 
 static void BRNE(void) {
-  PC = !(NZVC & 0x04) ? get_oprnd() : PC;
+  PC = !(NZVC & 0x04) ? get_word_oprnd() : PC;
 }
 
 static void BRGE(void) {
-  PC = !(NZVC & 0x0c) ? get_oprnd() : PC;
+  PC = !(NZVC & 0x08) ? get_word_oprnd() : PC;
 }
 
 static void BRGT(void) {
-  PC = !(NZVC & 0x08) ? get_oprnd() : PC;
+  PC = !(NZVC & 0x0c) ? get_word_oprnd() : PC;
 }
 
 static void BRV(void) {
-  PC = NZVC & 0x02 ? get_oprnd() : PC;
+  PC = NZVC & 0x02 ? get_word_oprnd() : PC;
 }
 
 static void BRC(void) {
-  PC = NZVC & 0x01 ? get_oprnd() : PC;
+  PC = NZVC & 0x01 ? get_word_oprnd() : PC;
 }
 
 static void CALL(void) {
   SP -= 2;
   stw(SP, PC);
-  PC = get_oprnd();
+  PC = get_word_oprnd();
 }
 
 static void LDWr(void) {
   word *r = get_reg();
 
-  *r = get_oprnd();
+  *r = get_word_oprnd();
 
   NZVC &= 0x03;                 /* clear all but VC */
   NZVC |= (*r >= 0x8000) << 3;  /* N */
@@ -300,16 +304,14 @@ static void LDBr(void) {
 
   switch (IR | 0x08) {
     case 0xd8:  /* immediate */
-      oprnd = (byte)get_oprnd();
+      oprnd = get_byte_oprnd();
       break;
     default:    /* direct, indirect, stack-relative, stack-relative deferred,
                    indexed, stack-indexed, stack-deferred indexed */
       if (ldw(charIn) == get_addr()) {
         scanf("%c", &oprnd);
       } else {
-        /* shift b/c two bytes were loaded and the high one is the one at the
-         * desired address. */
-        oprnd = (byte)(get_oprnd() >> 8);
+        oprnd = get_byte_oprnd();
       }
       break;
   }
@@ -337,47 +339,32 @@ static void STBr(void) {
   }
 }
 
-static void DECI(void) {
-  int i;
-  word w;
-
-  scanf("%d", &i);
-  w = (word)i;
-
-  stw(get_addr(), w);
-
-  NZVC &= 0x01;                 /* clear all but C */
-  NZVC |= (w >= 0x8000) << 3;   /* N */
-  NZVC |= (w == 0x0000) << 2;   /* Z */
-  NZVC |= (i != (sword)w) << 1; /* V */
-}
-
 static void ADDSP(void) {
   /* FIXME need to modify NZVC bits */
-  SP += get_oprnd();
+  SP += get_word_oprnd();
 }
 
 static void SUBSP(void) {
   /* FIXME need to modify NZVC bits */
-  SP -= get_oprnd();
+  SP -= get_word_oprnd();
 }
 
 static void ADDr(void) {
   word *r = get_reg();
 
-  *r = add(*r, get_oprnd());
+  *r = add(*r, get_word_oprnd());
 }
 
 static void SUBr(void) {
   word *r = get_reg();
 
-  *r = add(*r, -get_oprnd());
+  *r = add(*r, -get_word_oprnd());
 }
 
 static void ANDr(void) {
   word *r = get_reg();
 
-  *r &= get_oprnd();
+  *r &= get_word_oprnd();
 
   NZVC &= 0x03;                 /* clear all but VC */
   NZVC |= (*r >= 0x8000) << 3;  /* N */
@@ -387,7 +374,7 @@ static void ANDr(void) {
 static void ORr(void) {
   word *r = get_reg();
 
-  *r |= get_oprnd();
+  *r |= get_word_oprnd();
 
   NZVC &= 0x03;                 /* clear all but VC */
   NZVC |= (*r >= 0x8000) << 3;  /* N */
@@ -395,12 +382,11 @@ static void ORr(void) {
 }
 
 static void CPWr(void) {
-  (void)add(*get_reg(), get_oprnd());
+  (void)add(*get_reg(), get_word_oprnd());
 }
 
 static void CPBr(void) {
-  /* TODO is this correct? */
-  (void)add((word)(*get_reg() << 8), ~(get_oprnd() & 0xff00) + 0x0100);
+  add((word)(*get_reg() << 8), (word)(((~get_byte_oprnd()) << 8) + 0x0100));
 }
 
 static void TRAP(void) {
@@ -442,7 +428,7 @@ static void (*ops[256])(void) = {
   /* CALL */    CALL, CALL,
   /* NOPn */    TRAP, TRAP,
   /* NOP */     TRAP, TRAP, TRAP, TRAP, TRAP, TRAP, TRAP, TRAP,
-  /* DECI */    DECI, DECI, DECI, DECI, DECI, DECI, DECI, DECI,
+  /* DECI */    TRAP, TRAP, TRAP, TRAP, TRAP, TRAP, TRAP, TRAP,
   /* DECO */    TRAP, TRAP, TRAP, TRAP, TRAP, TRAP, TRAP, TRAP,
   /* HEXO */    TRAP, TRAP, TRAP, TRAP, TRAP, TRAP, TRAP, TRAP,
   /* STRO */    TRAP, TRAP, TRAP, TRAP, TRAP, TRAP, TRAP, TRAP,
