@@ -4,7 +4,7 @@
 struct vm {
   int (*burn)(void*, unsigned, unsigned);
   int (*init)(void);
-  int (*stbi)(unsigned, char);
+  int (*stbi)(unsigned, unsigned char);
   int (*step)(void);
 };
 

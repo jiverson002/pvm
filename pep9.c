@@ -465,11 +465,15 @@ static int burn(void *os, unsigned os_len, unsigned addr) {
     return -1;
   if (addr > 0xffff)
     return -1;
-  if (addr < os_len)
+  if (addr != 0x0000 && addr < os_len)
     return -1;
 
   /* record burn_addr */
-  burn_addr = (word)addr;
+  if (addr != 0x0000) {
+    burn_addr = (word)addr;
+  } else {
+    burn_addr = 0xffff;
+  }
 
   /* load os into memory */
   memcpy(Mem + burn_addr - (os_len - 1), os, os_len);
@@ -568,7 +572,7 @@ static int init(void) {
 
   /* install default os if no other os has been installed */
   if (0x0000 == burn_addr) {
-    err = burn(default_os, sizeof(default_os), 0xffff);
+    err = burn(default_os, sizeof(default_os), 0x0000);
     if (err)
       return -1;
   }
@@ -584,7 +588,7 @@ static int init(void) {
   return 0;
 }
 
-static int stbi(unsigned addr, char b) {
+static int stbi(unsigned addr, unsigned char b) {
   if (addr > 0xffff)
     return -1;
 
