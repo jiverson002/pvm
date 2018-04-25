@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
+#include "pdb.h"
 #include "pep9.h"
 #include "vm.h"
 
 #define OK(err) if (err) { printf("notok@%d\n", __LINE__); goto notok; }
-
-struct vm pepvm;
 
 static unsigned char a2x[256] = {
   0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, /*   0 -  15 */
@@ -28,51 +28,7 @@ static unsigned char a2x[256] = {
   0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0  /* 240 - 255 */
 };
 
-static int read_prog(char const * const filename) {
-  int ret;
-  unsigned i, j;
-  FILE *file;
-  unsigned char *buf = NULL;
-  long len;
-  unsigned long num;
-
-  file = fopen(filename, "rb");
-  OK(NULL == file);
-
-  ret = fseek(file, 0L, SEEK_END);
-  OK(ret);
-
-  len = ftell(file);
-  OK(-1 == len);
-  num = (unsigned long)len;
-
-  ret = fseek(file, 0L, SEEK_SET);
-  OK(ret);
-
-  buf = calloc(num + 1, sizeof(*buf));
-  OK(NULL == buf);
-
-  num = fread(buf, 1, num, file);
-  OK(num != (unsigned long)len);
-
-  ret = fclose(file);
-  OK(ret);
-
-  for (i=0,j=0; i < num; i+=3,j++) {
-    pepvm.stbi(j, a2x[buf[i + 0]] * 16 + a2x[buf[i + 1]]);
-  }
-
-  free(buf);
-
-  return 0;
-
-notok:
-  free(buf);
-
-  return -1;
-}
-
-static int read_os(char const * const filename, void **os, unsigned *os_len) {
+static int read_file(char const * const filename, void **mem, unsigned *mem_len) {
   int ret;
   unsigned i, j;
   FILE *file;
@@ -106,84 +62,85 @@ static int read_os(char const * const filename, void **os, unsigned *os_len) {
     buf[j] = a2x[buf[i + 0]] * 16 + a2x[buf[i + 1]];
   }
 
-  *os = buf;
-  *os_len = j - 1; /* subtract 1 for the zz delimiter */
+  *mem = buf;
+  *mem_len = j - 1; /* subtract 1 for the zz delimiter */
 
   return 0;
 
 notok:
+  free(buf);
+
   return -1;
 }
 
-static int von_neumann() {
-  int ret;
-  
-  ret = pepvm.init();
-  OK(ret);
-
-  while (pepvm.step());
-
-  return 0;
-
-notok:
-  return -1;
+static void usage(void) {
+  fprintf(stderr, "usage: pepvm [-dg] [-b BURN_ADDRESS] [-o OS_FILE] [FILE]\n");
+  /*
+   * -d diagnostic mode - printf instructions as they are executed
+   * -g debugging mode - step through program like gdb
+   * -o OS_FILE provide the machine code for an os to install
+   * -b BURN_ADDRESS the address where the last byte of the os should be
+   *    installed
+   */
 }
 
 int main(int argc, char **argv) {
-  int ret, c;
-  unsigned os_len, burn_addr = 0x0000;
-  void *os;
-  char *os_file = NULL;
+  int ret, c, dbg;
+  struct os os;
+  struct prog prog;
+  struct vm vm;
+  char *os_file;
 
-  if (argc < 2) {
-    fprintf(stderr, "usage: pepvm [-di] [-b BURN_ADDRESS] [-o OS_FILE] FILE\n");
-    /*
-     * -d diagnostic mode - printf instructions as they are executed
-     * -i interactive debugging mode - step through program like gdb
-     * -o OS_FILE provide the machine code for an os to install
-     * -b BURN_ADDRESS the address where the last byte of the os should be
-     *    installed
-     */
-    return EXIT_FAILURE;
-  }
+  dbg = 0;
+  os_file = NULL;
+
+  memset(&os, 0, sizeof(struct os));
+  memset(&prog, 0, sizeof(struct prog));
+  memset(&vm, 0, sizeof(struct vm));
 
   opterr = 0;
-  while (-1 != (c = getopt(argc, argv, "+dib:o:"))) {
+  while (-1 != (c = getopt(argc, argv, "+dgb:o:"))) {
     switch (c) {
       case 'd':
         break;
-      case 'i':
+      case 'g':
+        dbg = 1;
         break;
       case 'b':
-        burn_addr = (unsigned)strtoul(optarg, NULL, 16);
+        os.burn_addr = (unsigned)strtoul(optarg, NULL, 16);
         break;
       case 'o':
         os_file = optarg;
         break;
       default:
+        usage();
         abort();
     }
   }
 
-  if (1 != argc - optind) {
-    fprintf(stderr, "You must provide exactly one program file\n");
-    return EXIT_FAILURE;
+  if (1 < argc - optind) { /* cannot never specify more than one program file */
+    usage();
+    OK(-1);
   }
 
-  pepvm = pep9;
+  if (!dbg && 0 == argc - optind) { /* must specify exactly one program file */
+    usage();                        /* in non-debugging mode */
+    OK(-1);
+  }
+
+  vm = pep9;
 
   if (os_file) {
-    ret = read_os(os_file, &os, &os_len);
-    OK(ret);
-
-    ret = pepvm.burn(os, os_len, burn_addr);
+    ret = read_file(os_file, &(os.mem), &(os.len));
     OK(ret);
   }
 
-  ret = read_prog(argv[optind]);
-  OK(ret);
+  if (1 == argc - optind) {
+    ret = read_file(argv[optind], &(prog.mem), &(prog.len));
+    OK(ret);
+  }
 
-  ret = von_neumann();
+  ret = pdb(&vm, &os, &prog, dbg);
   OK(ret);
 
   return EXIT_SUCCESS;

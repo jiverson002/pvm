@@ -12,12 +12,12 @@ typedef uint16_t word;
 /* System vectors */
 /******************************************************************************/
 static word burn_addr = 0x0000;
-#define osRAM     (burn_addr - 11)
-#define wordTemp  (burn_addr - 9)
-#define charIn    (burn_addr - 7)
-#define charOut   (burn_addr - 5)
-#define loader    (burn_addr - 3)
-#define trap      (burn_addr - 1)
+#define osRAM    (burn_addr - 11)
+#define wordTemp (burn_addr - 9)
+#define charIn   (burn_addr - 7)
+#define charOut  (burn_addr - 5)
+#define loader   (burn_addr - 3)
+#define trap     (burn_addr - 1)
 
 /******************************************************************************/
 /* Virtual machine structure */
@@ -387,7 +387,7 @@ static void CPBr(void) {
 }
 
 static void TRAP(void) {
-  word temp = ldb(wordTemp);
+  word temp = ldw(wordTemp);
   stb(temp - 1, IR);
   stw(temp - 3, SP);
   stw(temp - 5, PC);
@@ -461,7 +461,7 @@ static void (*i2f[256])(void) = {
 static int burn(void *os, unsigned os_len, unsigned addr) {
   if (!os)
     return -1;
-  if (os_len > 0x10000)
+  if (os_len > 0x10000) /* FIXME create better size constraints */
     return -1;
   if (addr > 0xffff)
     return -1;
@@ -474,6 +474,9 @@ static int burn(void *os, unsigned os_len, unsigned addr) {
   } else {
     burn_addr = 0xffff;
   }
+
+  /* clear memory */
+  memset(Mem, 0, 1<<16);
 
   /* load os into memory */
   memcpy(Mem + burn_addr - (os_len - 1), os, os_len);
@@ -588,6 +591,18 @@ static int init(void) {
   return 0;
 }
 
+static int load(void *prog, unsigned prog_len) {
+  if (!prog)
+    return -1;
+  if (prog_len > 0x10000) /* FIXME create better size constraints */
+    return -1;
+
+  /* load prog into memory */
+  memcpy(Mem, prog, prog_len);
+
+  return 0;
+}
+
 static int stbi(unsigned addr, unsigned char b) {
   if (addr > 0xffff)
     return -1;
@@ -619,8 +634,8 @@ static int step(void) {
   /* execute */
   i2f[IR]();
 
-  /* return 0 only if IR == STOP(0x0000) */
+  /* return 0 iff IR == STOP(0x0000) */
   return IR;
 }
 
-struct vm pep9 = { burn, init, stbi, step };
+struct vm const pep9 = { burn, init, load, stbi, step };

@@ -3,6 +3,6 @@
 
 #include "vm.h"
 
-extern struct vm pep9;
+extern struct vm const pep9;
 
 #endif /* PEP9_H */
