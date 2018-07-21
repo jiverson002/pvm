@@ -139,9 +139,9 @@ int pdb(struct vm *vm, struct os *os, struct prog *prog, int dbg) {
 
       case PRE_RUNNING_STATE:
       case PRE_STARTED_STATE:
-        ret = vm->load(prog->mem, prog->len);
-        OK(ret);
         ret = vm->init();
+        OK(ret);
+        ret = vm->load(prog->mem, prog->len);
         OK(ret);
         state++;
         break;
