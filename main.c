@@ -74,10 +74,11 @@ notok:
 }
 
 static void usage(void) {
-  fprintf(stderr, "usage: pepvm [-dg] [-b BURN_ADDRESS] [-o OS_FILE] [FILE]\n");
+  fprintf(stderr, "usage: pepvm [-dgh] [-b BURN_ADDRESS] [-o OS_FILE] [FILE]\n");
   /*
    * -d diagnostic mode - printf instructions as they are executed
    * -g debugging mode - step through program like gdb
+   * -h print the help message
    * -o OS_FILE provide the machine code for an os to install
    * -b BURN_ADDRESS the address where the last byte of the os should be
    *    installed
@@ -99,13 +100,16 @@ int main(int argc, char **argv) {
   memset(&vm, 0, sizeof(struct vm));
 
   opterr = 0;
-  while (-1 != (c = getopt(argc, argv, "+dgb:o:"))) {
+  while (-1 != (c = getopt(argc, argv, "+dhgb:o:"))) {
     switch (c) {
       case 'd':
         break;
       case 'g':
         dbg = 1;
         break;
+      case 'h':
+        usage();
+        return 0;
       case 'b':
         os.burn_addr = (unsigned)strtoul(optarg, NULL, 16);
         break;
@@ -118,7 +122,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (1 < argc - optind) { /* cannot never specify more than one program file */
+  if (1 < argc - optind) { /* cannot ever specify more than one program file */
     usage();
     OK(-1);
   }
