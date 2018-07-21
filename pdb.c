@@ -11,11 +11,12 @@ enum cmd {
   CONTINUE_CMD,
   FILE_CMD,
   HELP_CMD,
-  INVALID_CMD,
   RUN_CMD,
   START_CMD,
   STEP_CMD,
-  QUIT_CMD
+  QUIT_CMD,
+  NUM_CMDS,
+  INVALID_CMD
 };
 
 enum state {
@@ -26,11 +27,30 @@ enum state {
   PRE_STARTED_STATE, /* this must be one less than STARTED_STATE */
   STARTED_STATE,
   START_STATE,
-  QUIT_STATE
+  QUIT_STATE,
+  NUM_STATES
+};
+
+struct {
+  enum cmd cmd;
+  char const * const short_cmd;
+  char const * const long_cmd;
+  unsigned long long_cmd_len;
+} cmds[NUM_CMDS] = {
+  { CONTINUE_CMD, "c", "continue", 9 },
+  { FILE_CMD, NULL, "file", 5 },
+  { HELP_CMD, "h", "help", 5 },
+  { RUN_CMD, "r", "run", 4 },
+  { START_CMD, NULL, "start", 6 },
+  { STEP_CMD, "s", "step", 5 },
+  { QUIT_CMD, "q", "quit", 5 }
 };
 
 static enum cmd get_cmd(char **buf, size_t *buf_len) {
+  int i;
+  unsigned long n;
   ssize_t len;
+  char const *s, *l;
 
   printf("(pdb) ");
   len = getline(buf, buf_len, stdin);
@@ -39,20 +59,14 @@ static enum cmd get_cmd(char **buf, size_t *buf_len) {
   (*buf)[len - 1] = '\0'; /* get rid of trailing new line */
 
   /* Decode command string */
-  if (!strncmp(*buf, "c", 2) || !strncmp(*buf, "continue", 9)) {
-    return CONTINUE_CMD;
-  } else if (!strncmp(*buf, "file", 5)) {
-    return FILE_CMD;
-  } else if (!strncmp(*buf, "h", 2) || !strncmp(*buf, "help", 5)) {
-    return HELP_CMD;
-  } else if (!strncmp(*buf, "start", 6)) {
-    return START_CMD;
-  } else if (!strncmp(*buf, "s", 2) || !strncmp(*buf, "step", 5)) {
-    return STEP_CMD;
-  } else if (!strncmp(*buf, "r", 2) || !strncmp(*buf, "run", 4)) {
-    return RUN_CMD;
-  } else if (!strncmp(*buf, "q", 2) || !strncmp(*buf, "quit", 5)) {
-    return QUIT_CMD;
+  for (i=0; i < NUM_CMDS; i++) {
+    s = cmds[i].short_cmd;
+    l = cmds[i].long_cmd;
+    n = cmds[i].long_cmd_len;
+
+    if ((s && !strncmp(*buf, s, 2)) || (l && !strncmp(*buf, l, n))) {
+      return cmds[i].cmd;
+    }
   }
 
 notok:
@@ -198,6 +212,10 @@ int pdb(struct vm *vm, struct os *os, struct prog *prog, int dbg) {
 
       case QUIT_STATE:
         break;
+
+      default:
+        /* badstate(...); */
+        OK(-1);
     }
 
     if ((EOF_STATE == state && !dbg) || QUIT_STATE == state) {
