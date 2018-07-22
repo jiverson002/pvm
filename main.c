@@ -7,7 +7,12 @@
 #include "pep9.h"
 #include "vm.h"
 
-#define OK(err) if (err) { printf("notok@%s:%d\n", __FILE__, __LINE__); goto notok; }
+#define PEPVM_MAJOR 0
+#define PEPVM_MINOR 0
+#define PEPVM_PATCH 0
+
+#define OK(err)\
+  if (err) { printf("notok@%s:%d\n", __FILE__, __LINE__); goto notok; }
 
 static unsigned char a2x[256] = {
   0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, /*   0 -  15 */
@@ -74,15 +79,22 @@ notok:
 }
 
 static void usage(void) {
-  fprintf(stderr, "usage: pepvm [-dgh] [-b BURN_ADDRESS] [-o OS_FILE] [FILE]\n");
+  fprintf(stderr, "usage: pepvm [-dghv] [-b=<burn_address>] [-o=<os_file>] "
+    "[<file>]\n");
   /*
    * -d diagnostic mode - printf instructions as they are executed
    * -g debugging mode - step through program like gdb
    * -h print the help message
+   * -v print version information
    * -o OS_FILE provide the machine code for an os to install
    * -b BURN_ADDRESS the address where the last byte of the os should be
    *    installed
    */
+}
+
+static void version(void) {
+  fprintf(stderr, "pepvm version %d.%d.%d (pdb %d.%d.%d)\n", PEPVM_MAJOR,
+    PEPVM_MINOR, PEPVM_PATCH, PDB_MAJOR, PDB_MINOR, PDB_PATCH);
 }
 
 int main(int argc, char **argv) {
@@ -100,7 +112,7 @@ int main(int argc, char **argv) {
   memset(&vm, 0, sizeof(struct vm));
 
   opterr = 0;
-  while (-1 != (c = getopt(argc, argv, "+dhgb:o:"))) {
+  while (-1 != (c = getopt(argc, argv, "+dhgvb:o:"))) {
     switch (c) {
       case 'd':
         break;
@@ -110,6 +122,10 @@ int main(int argc, char **argv) {
       case 'h':
         usage();
         return 0;
+      case 'v':
+        version();
+        return 0;
+
       case 'b':
         os.burn_addr = (unsigned)strtoul(optarg, NULL, 16);
         break;

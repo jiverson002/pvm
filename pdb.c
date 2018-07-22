@@ -5,7 +5,8 @@
 
 #include "pdb.h"
 
-#define OK(err) if (err) { printf("notok@%s:%d\n", __FILE__, __LINE__); goto notok; }
+#define OK(err)\
+  if (err) { printf("notok@%s:%d\n", __FILE__, __LINE__); goto notok; }
 
 enum cmd {
   CONTINUE_CMD,
