@@ -69,9 +69,6 @@ static inline byte getbyte(void) {
   return *(stdin_hd++);
 }
 
-/******************************************************************************/
-/* ISA implementation */
-/******************************************************************************/
 static inline int is_nonunary(byte in_spec) {
   return !((in_spec < 0x12) || (0x27 == (in_spec | 0x01)));
 }
@@ -152,7 +149,10 @@ static inline word get_word_oprnd(void) {
     : (0x00 == (IR & 0x07) ? OpSpec : ldw(get_addr()));
 }
 
-static inline void STOP(void) {
+/******************************************************************************/
+/* ISA implementation */
+/******************************************************************************/
+static void STOP(void) {
 }
 
 static void RET(void) {
