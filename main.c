@@ -7,7 +7,7 @@
 #include "pep9.h"
 #include "vm.h"
 
-#define OK(err) if (err) { printf("notok@%d\n", __LINE__); goto notok; }
+#define OK(err) if (err) { printf("notok@%s:%d\n", __FILE__, __LINE__); goto notok; }
 
 static unsigned char a2x[256] = {
   0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, /*   0 -  15 */
