@@ -1,5 +1,9 @@
 #include "pep9.h"
 
+#if __STDC_VERSION__ < 199901L
+  #define inline /* define to nothing if pre-C99 */
+#endif
+
 /******************************************************************************/
 /* Machine types */
 /******************************************************************************/
@@ -46,14 +50,28 @@ static struct {
 #define Mem    (vm.mem)
 
 /******************************************************************************/
-/* ISA implementation */
+/* Helper functions */
 /******************************************************************************/
 #include <stdio.h>
+#include <string.h>
 
-#if __STDC_VERSION__ < 199901L
-  #define inline /* define to nothing if pre-C99 */
-#endif
+static inline byte getbyte(void) {
+  static byte stdin_buf[8192] = { 0 };
+  static byte *stdin_hd = stdin_buf;
+  static byte *stdin_tl = stdin_buf;
+  static byte *stdin_end = stdin_buf + 8192;
 
+  if (stdin_hd == stdin_tl) {
+    /* TODO handle the return value??? */
+    (void)fgets((void*)stdin_tl, (int)(stdin_end - stdin_tl), stdin);
+    stdin_tl += strlen((void*)stdin_tl);
+  }
+  return *(stdin_hd++);
+}
+
+/******************************************************************************/
+/* ISA implementation */
+/******************************************************************************/
 static inline int is_nonunary(byte in_spec) {
   return !((in_spec < 0x12) || (0x27 == (in_spec | 0x01)));
 }
@@ -306,7 +324,7 @@ static void LDBr(void) {
     default:    /* direct, indirect, stack-relative, stack-relative deferred,
                    indexed, stack-indexed, stack-deferred indexed */
       if (ldw(charIn) == get_addr()) {
-        scanf("%c", &oprnd);
+        oprnd = getbyte();
       } else {
         oprnd = get_byte_oprnd();
       }
