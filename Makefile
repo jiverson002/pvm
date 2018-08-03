@@ -1,10 +1,15 @@
+.POSIX:
+
 OPTIMIZE := -O0 -g
 STANDARD := -ansi -pedantic
 WARNING  := -Wall -Wextra -Wpedantic -Wshadow -Wpointer-arith -Wcast-align \
             -Wwrite-strings -Wmissing-prototypes -Wmissing-declarations \
             -Wredundant-decls -Wnested-externs -Winline -Wno-long-long \
-            -Wuninitialized -Wconversion -Wstrict-prototypes
-CFLAGS   := $(OPTIMIZE) $(STANDARD) $(WARNING)
+            -Wuninitialized -Wstrict-prototypes \
+					  -Wno-sign-conversion -Wno-unused-function
 
-pepvm.exe: main.c pdb.c pdb.h pep9.c pep9.h Makefile
-	gcc $(CFLAGS) -o $@ main.c pdb.c pep9.c
+CFLAGS := $(OPTIMIZE) $(STANDARD) $(WARNING)
+
+PVM_LIB := libpvm.a
+
+$(PVM_LIB): $(PVM_LIB)(pep9.o)

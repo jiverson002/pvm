@@ -476,7 +476,7 @@ static void (*i2f[256])(void) = {
 /******************************************************************************/
 #include <string.h>
 
-static int burn(void *os, unsigned os_len, unsigned addr) {
+static int burn(void const *os, unsigned os_len, unsigned addr) {
   if (!os)
     return -1;
   if (os_len > 0x10000) /* FIXME create better size constraints */
@@ -609,7 +609,7 @@ static int init(void) {
   return 0;
 }
 
-static int load(void *prog, unsigned prog_len) {
+static int load(void const *prog, unsigned prog_len) {
   if (!prog)
     return -1;
   if (prog_len > 0x10000) /* FIXME create better size constraints */
@@ -617,15 +617,6 @@ static int load(void *prog, unsigned prog_len) {
 
   /* load prog into memory */
   memcpy(Mem, prog, prog_len);
-
-  return 0;
-}
-
-static int stbi(unsigned addr, unsigned char b) {
-  if (addr > 0xffff)
-    return -1;
-
-  stb((word)addr, (byte)b);
 
   return 0;
 }
@@ -656,4 +647,4 @@ static int step(void) {
   return IR;
 }
 
-struct vm const pep9 = { burn, init, load, stbi, step };
+struct vm const pep9 = { burn, init, load, step };
