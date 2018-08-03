@@ -13,3 +13,6 @@ CFLAGS := $(OPTIMIZE) $(STANDARD) $(WARNING)
 PVM_LIB := libpvm.a
 
 $(PVM_LIB): $(PVM_LIB)(pep9.o)
+
+clean:
+	rm -f $(PVM_LIB)
