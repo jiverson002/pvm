@@ -25,4 +25,4 @@ struct vm {
 
 #include "pep9.h"
 
-#endif /* VM_H */
+#endif /* PVM_H */

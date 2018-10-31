@@ -465,6 +465,7 @@ static void (*i2f[256])(void) = {
                 LDWr, LDWr, LDWr, LDWr, LDWr, LDWr, LDWr, LDWr,
   /* LDBr */    LDBr, LDBr, LDBr, LDBr, LDBr, LDBr, LDBr, LDBr,
                 LDBr, LDBr, LDBr, LDBr, LDBr, LDBr, LDBr, LDBr,
+  /* FIXME: Pep/9 has no instruction for STWr,i or STBr,i */
   /* STWr */    STWr, STWr, STWr, STWr, STWr, STWr, STWr, STWr,
                 STWr, STWr, STWr, STWr, STWr, STWr, STWr, STWr,
   /* STBr */    STBr, STBr, STBr, STBr, STBr, STBr, STBr, STBr,
