@@ -25,3 +25,9 @@ addons:
     packages: splint
   homebrew:
     packages: splint
+
+# Override default script.
+script:
+  - cmake .
+  - cmake --build .
+  - splint pvm.h

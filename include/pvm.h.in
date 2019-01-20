@@ -1,0 +1,17 @@
+#ifndef PVM_H
+#define PVM_H 1
+
+#define PVM_MAJOR @PROJECT_VERSION_MAJOR@
+#define PVM_MINOR @PROJECT_VERSION_MINOR@
+#define PVM_PATCH @PROJECT_VERSION_PATCH@
+
+struct vm {
+  int (*burn)(void const *, unsigned, unsigned);
+  int (*init)(void);
+  int (*load)(void const *, unsigned);
+  int (*step)(void);
+};
+
+extern struct vm const pep9;
+
+#endif /* PVM_H */

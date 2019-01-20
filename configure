@@ -1,4 +1,0 @@
-#!/bin/sh
-
-# for the time being, this is just to satisfy the requirements of travis
-true
