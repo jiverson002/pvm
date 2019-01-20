@@ -1,12 +1,12 @@
 .POSIX:
 
 OPTIMIZE := -O0 -g
-STANDARD := -ansi -pedantic
+STANDARD := -ansi -pedantic -ffreestanding
 WARNING  := -Wall -Wextra -Wpedantic -Wshadow -Wpointer-arith -Wcast-align \
             -Wwrite-strings -Wmissing-prototypes -Wmissing-declarations \
             -Wredundant-decls -Wnested-externs -Winline -Wno-long-long \
             -Wuninitialized -Wstrict-prototypes \
-					  -Wno-sign-conversion -Wno-unused-function
+            -Wno-sign-conversion -Wno-unused-function
 
 CFLAGS := $(OPTIMIZE) $(STANDARD) $(WARNING)
 

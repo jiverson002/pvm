@@ -477,14 +477,14 @@ static void (*i2f[256])(void) = {
 /******************************************************************************/
 #include <string.h>
 
-static int burn(void const *os, unsigned os_len, unsigned addr) {
+static int burn(void const * const os, unsigned const os_len, unsigned const addr) {
   if (!os)
     return -1;
-  if (os_len > 0x10000) /* FIXME create better size constraints */
+  if (os_len == 0 || os_len > 1<<16)
     return -1;
   if (addr > 0xffff)
     return -1;
-  if (addr != 0x0000 && addr < os_len)
+  if (addr != 0x0000 && addr < os_len - 1)
     return -1;
 
   /* record burn_addr */
@@ -610,7 +610,7 @@ static int init(void) {
   return 0;
 }
 
-static int load(void const *prog, unsigned prog_len) {
+static int load(void const * const prog, unsigned const prog_len) {
   if (!prog)
     return -1;
   if (prog_len > 0x10000) /* FIXME create better size constraints */

@@ -1,7 +1,7 @@
 #ifndef PEP9_H
 #define PEP9_H 1
 
-#include "pvm.h"
+#include "struct.h"
 
 extern struct vm const pep9;
 
