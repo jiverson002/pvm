@@ -9,20 +9,19 @@ branches:
   only:
     - master
 
-# Install dependencies.
-addons:
-  apt:
-    packages: splint
-  homebrew:
-    packages: splint
+# Choose operating systems.
+os:
+  - linux
+  - osx
 
 # Choose compilers.
 compiler:
   - clang
   - gcc
 
-# Build matrix.
-matrix:
-  include:
-    - os: linux
-    - os: osx
+# Install dependencies.
+addons:
+  apt:
+    packages: splint
+  homebrew:
+    packages: splint
