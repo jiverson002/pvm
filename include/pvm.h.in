@@ -6,9 +6,9 @@
 #define PVM_PATCH @PROJECT_VERSION_PATCH@
 
 struct vm {
-  int (*burn)(void const *, unsigned, unsigned);
+  int (*burn)(/*@ unique @*/ void const *, unsigned, unsigned);
   int (*init)(void);
-  int (*load)(void const *, unsigned);
+  int (*load)(/*@ unique @*/ void const *, unsigned);
   int (*step)(void);
 };
 

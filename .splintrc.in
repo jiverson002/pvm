@@ -1,0 +1,2 @@
+# additional compiler flags
+-I${CMAKE_BINARY_DIR}

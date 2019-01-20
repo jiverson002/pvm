@@ -30,4 +30,4 @@ addons:
 script:
   - cmake .
   - cmake --build .
-  - splint pvm.h
+  - splint `.splint-sources`

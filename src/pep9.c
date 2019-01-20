@@ -7,6 +7,7 @@
 /******************************************************************************/
 /* Machine types */
 /******************************************************************************/
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef uint8_t  byte;
@@ -37,7 +38,7 @@ static struct {
     word opspec;
   } cpu;
 
-  byte mem[(1 << 16)];
+  byte mem[(1u << 16)];
 } vm;
 
 #define NZVC   (vm.cpu.nzvc)
@@ -56,7 +57,7 @@ static struct {
 #include <string.h>
 
 static inline byte getbyte(void) {
-  static byte stdin_buf[8192] = { 0 };
+  static byte stdin_buf[8192];
   static byte *stdin_hd = stdin_buf;
   static byte *stdin_tl = stdin_buf;
   static byte *stdin_end = stdin_buf + 8192;
@@ -69,7 +70,7 @@ static inline byte getbyte(void) {
   return *(stdin_hd++);
 }
 
-static inline int is_nonunary(byte in_spec) {
+static inline bool is_nonunary(byte in_spec) {
   return !((in_spec < 0x12) || (0x27 == (in_spec | 0x01)));
 }
 
@@ -91,7 +92,7 @@ static inline void stw(word idx, word w) {
 }
 
 static inline word add(word a, word b) {
-  byte v;
+  bool v;
   word c;
 
   c = a;
@@ -101,18 +102,18 @@ static inline word add(word a, word b) {
    * different signs, you cannot have an overflow. If you add two numbers with
    * the same sign and the result is not the same sign, then you have signed
    * overflow. */
-  v = !((c & 0x8000) ^ (b & 0x8000)) && ((c & 0x8000) ^ (a & 0x8000));
+  v = !((bool)((c & 0x8000) ^ (b & 0x8000)) && (bool)((c & 0x8000) ^ (a & 0x8000)));
 
-  NZVC = 0;                   /* clear all bits */
-  NZVC |= (a >= 0x8000) << 3; /* N */
-  NZVC |= (a == 0x0000) << 2; /* Z */
-  NZVC |= v << 1;             /* V */
-  NZVC |= a < c;              /* C */ /* TODO is this correct */
+  NZVC = 0;                             /* clear all bits */
+  NZVC |= (a >= 0x8000 ? 1u : 0u) << 3; /* N */
+  NZVC |= (a == 0x0000 ? 1u : 0u) << 2; /* Z */
+  NZVC |= (v ? 1u : 0u) << 1;           /* V */
+  NZVC |= (a < c ? 1u : 0u);            /* C */ /* TODO is this correct */
 
   return a;
 }
 
-static inline word *get_reg(void) {
+static inline /*@dependent@*/ word *get_reg(void) {
   return IR <= 0x11
     ? (0x00 == (IR & 0x01) ? &A : &X)
     : (0x00 == (IR & 0x08) ? &A : &X);
@@ -186,9 +187,9 @@ static void NOTr(void) {
 
   *r = ~(*r);
 
-  NZVC &= 0x03;                 /* clear all but VC */
-  NZVC |= (*r >= 0x8000) << 3;  /* N */
-  NZVC |= (*r == 0x0000) << 2;  /* Z */
+  NZVC &= 0x03;                           /* clear all but VC */
+  NZVC |= (*r >= 0x8000 ? 1u : 0u) << 3;  /* N */
+  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
 }
 
 static void NEGr(void) {
@@ -196,10 +197,10 @@ static void NEGr(void) {
 
   *r = -(*r);
 
-  NZVC &= 0x01;                 /* clear all but C */
-  NZVC |= (*r >= 0x8000) << 3;  /* N */
-  NZVC |= (*r == 0x0000) << 2;  /* Z */
-  NZVC |= (*r == -(*r));        /* V */
+  NZVC &= 0x01;                           /* clear all but C */
+  NZVC |= (*r >= 0x8000 ? 1u : 0u) << 3;  /* N */
+  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
+  NZVC |= (*r == -(*r));                  /* V */
 }
 
 static void ASLr(void) {
@@ -207,17 +208,17 @@ static void ASLr(void) {
   word *r = get_reg();
 
   /* check if r<0..1> is 01 or 10 */
-  v = ((*r < 0x8000) && (*r >= 0x4000)) || ((*r >= 0x8000) && (*r < 0xc000));
+  v = (byte)(((*r < 0x8000) && (*r >= 0x4000)) || ((*r >= 0x8000) && (*r < 0xc000)));
   /* check if r<0> is 1 */
-  c = *r >= 0x8000;
+  c = (byte)(*r >= 0x8000);
 
   *r <<= 1;
 
-  NZVC = 0;                     /* clear all bits */
-  NZVC |= (*r >= 0x8000) << 3;  /* N */
-  NZVC |= (*r == 0x0000) << 2;  /* Z */
-  NZVC |= v << 1;               /* Z */
-  NZVC |= c;                    /* C */
+  NZVC = 0;                               /* clear all bits */
+  NZVC |= (*r >= 0x8000 ? 1u : 0u) << 3;  /* N */
+  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
+  NZVC |= v << 1;                         /* Z */
+  NZVC |= c;                              /* C */
 }
 
 static void ASRr(void) {
@@ -229,10 +230,10 @@ static void ASRr(void) {
 
   *r = (*r & 0x8000) | (*r >> 1);
 
-  NZVC &= 0x02;                 /* clear all but V */
-  NZVC |= (*r >= 0x8000) << 3;  /* N */
-  NZVC |= (*r == 0x0000) << 2;  /* Z */
-  NZVC |= c;                    /* C */
+  NZVC &= 0x02;                           /* clear all but V */
+  NZVC |= (*r >= 0x8000 ? 1u : 0u) << 3;  /* N */
+  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
+  NZVC |= c;                              /* C */
 }
 
 static void ROLr(void) {
@@ -240,7 +241,7 @@ static void ROLr(void) {
   word *r = get_reg();
 
   /* check if r<0> is 1  */
-  c = *r >= 0x8000;
+  c = (byte)(*r >= 0x8000);
 
   *r = (word)((*r << 1) | (NZVC & 0x0001));
 
@@ -266,35 +267,35 @@ static void BR(void) {
 }
 
 static void BRLE(void) {
-  PC = NZVC & 0x0c ? get_word_oprnd() : PC;
+  PC = (bool)(NZVC & 0x0c) ? get_word_oprnd() : PC;
 }
 
 static void BRLT(void) {
-  PC = NZVC & 0x08 ? get_word_oprnd() : PC;
+  PC = (bool)(NZVC & 0x08) ? get_word_oprnd() : PC;
 }
 
 static void BREQ(void) {
-  PC = NZVC & 0x04 ? get_word_oprnd() : PC;
+  PC = (bool)(NZVC & 0x04) ? get_word_oprnd() : PC;
 }
 
 static void BRNE(void) {
-  PC = !(NZVC & 0x04) ? get_word_oprnd() : PC;
+  PC = !(bool)(NZVC & 0x04) ? get_word_oprnd() : PC;
 }
 
 static void BRGE(void) {
-  PC = !(NZVC & 0x08) ? get_word_oprnd() : PC;
+  PC = !(bool)(NZVC & 0x08) ? get_word_oprnd() : PC;
 }
 
 static void BRGT(void) {
-  PC = !(NZVC & 0x0c) ? get_word_oprnd() : PC;
+  PC = !(bool)(NZVC & 0x0c) ? get_word_oprnd() : PC;
 }
 
 static void BRV(void) {
-  PC = NZVC & 0x02 ? get_word_oprnd() : PC;
+  PC = (bool)(NZVC & 0x02) ? get_word_oprnd() : PC;
 }
 
 static void BRC(void) {
-  PC = NZVC & 0x01 ? get_word_oprnd() : PC;
+  PC = (bool)(NZVC & 0x01) ? get_word_oprnd() : PC;
 }
 
 static void CALL(void) {
@@ -308,9 +309,9 @@ static void LDWr(void) {
 
   *r = get_word_oprnd();
 
-  NZVC &= 0x03;                 /* clear all but VC */
-  NZVC |= (*r >= 0x8000) << 3;  /* N */
-  NZVC |= (*r == 0x0000) << 2;  /* Z */
+  NZVC &= 0x03;                           /* clear all but VC */
+  NZVC |= (*r >= 0x8000 ? 1u : 0u) << 3;  /* N */
+  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
 }
 
 static void LDBr(void) {
@@ -333,9 +334,9 @@ static void LDBr(void) {
 
   *r = (*r & 0xff00) | oprnd;
 
-  NZVC &= 0x03;                 /* clear all but VC */
-                                /* N is 0 by definition of Pep/9 */
-  NZVC |= (*r == 0x0000) << 2;  /* Z */
+  NZVC &= 0x03;                           /* clear all but VC */
+                                          /* N is 0 by definition of Pep/9 */
+  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
 }
 
 static void STWr(void) {
@@ -347,7 +348,7 @@ static void STBr(void) {
   word op_addr = get_addr();
 
   if (ldw(charOut) == op_addr) {
-    printf("%c", b);
+    printf("%c", (int)b);
   }
   else {
     stb(op_addr, b);
@@ -381,9 +382,9 @@ static void ANDr(void) {
 
   *r &= get_word_oprnd();
 
-  NZVC &= 0x03;                 /* clear all but VC */
-  NZVC |= (*r >= 0x8000) << 3;  /* N */
-  NZVC |= (*r == 0x0000) << 2;  /* Z */
+  NZVC &= 0x03;                           /* clear all but VC */
+  NZVC |= (*r >= 0x8000 ? 1u : 0u) << 3;  /* N */
+  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
 }
 
 static void ORr(void) {
@@ -392,8 +393,8 @@ static void ORr(void) {
   *r |= get_word_oprnd();
 
   NZVC &= 0x03;                 /* clear all but VC */
-  NZVC |= (*r >= 0x8000) << 3;  /* N */
-  NZVC |= (*r == 0x0000) << 2;  /* Z */
+  NZVC |= (*r >= 0x8000 ? 1u : 0u) << 3;  /* N */
+  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
 }
 
 static void CPWr(void) {
@@ -401,7 +402,7 @@ static void CPWr(void) {
 }
 
 static void CPBr(void) {
-  add((word)(*get_reg() << 8), (word)(((~get_byte_oprnd()) << 8) + 0x0100));
+  (void)add((word)(*get_reg() << 8), (word)(((~get_byte_oprnd()) << 8) + 0x0100));
 }
 
 static void TRAP(void) {
@@ -477,10 +478,10 @@ static void (*i2f[256])(void) = {
 /******************************************************************************/
 #include <string.h>
 
-static int burn(void const * const os, unsigned const os_len, unsigned const addr) {
+static int burn(/*@unique@*/ void const * const os, unsigned const os_len, unsigned const addr) {
   if (!os)
     return -1;
-  if (os_len == 0 || os_len > 1<<16)
+  if (os_len == 0 || os_len > 1u << 16)
     return -1;
   if (addr > 0xffff)
     return -1;
@@ -495,15 +496,16 @@ static int burn(void const * const os, unsigned const os_len, unsigned const add
   }
 
   /* clear memory */
-  memset(Mem, 0, 1<<16);
+  memset(Mem, 0, (size_t)(1u << 16));
 
   /* load os into memory */
-  memcpy(Mem + burn_addr - (os_len - 1), os, os_len);
+  memcpy(Mem + burn_addr - (os_len - 1), os, (size_t)os_len);
 
   return 0;
 }
 
 static int init(void) {
+  /*@ignore@*/
   unsigned char default_os[] = {
     0xC8, 0x00, 0x00, 0xD1, 0xFC, 0x15, 0xB0, 0x00, 0x7A, 0x18, 0xFC, 0x51,
     0xB0, 0x00, 0x39, 0x14, 0xFC, 0x2C, 0x60, 0x00, 0x09, 0x0A, 0x0A, 0x0A,
@@ -590,12 +592,13 @@ static int init(void) {
     0x01, 0x12, 0xFF, 0xE4, 0x01, 0xFB, 0x8F, 0xFC, 0x0F, 0xFC, 0x15, 0xFC,
     0x16, 0xFC, 0x17, 0xFC, 0x52
   };
+  /*@end@*/
   int err = 0;
 
   /* install default os if no other os has been installed */
   if (0x0000 == burn_addr) {
-    err = burn(default_os, sizeof(default_os), 0x0000);
-    if (err)
+    err = burn(default_os, (unsigned)sizeof(default_os), 0x0000);
+    if (0 != err)
       return -1;
   }
 
@@ -610,14 +613,14 @@ static int init(void) {
   return 0;
 }
 
-static int load(void const * const prog, unsigned const prog_len) {
+static int load(/*@unique@*/ void const * const prog, unsigned const prog_len) {
   if (!prog)
     return -1;
   if (prog_len > 0x10000) /* FIXME create better size constraints */
     return -1;
 
   /* load prog into memory */
-  memcpy(Mem, prog, prog_len);
+  memcpy(Mem, prog, (size_t)prog_len);
 
   return 0;
 }
@@ -645,7 +648,7 @@ static int step(void) {
   i2f[IR]();
 
   /* return 0 iff IR == STOP(0x0000) */
-  return IR;
+  return (int)IR;
 }
 
 struct vm const pep9 = { burn, init, load, step };
