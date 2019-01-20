@@ -27,7 +27,6 @@ set(
 
 # Set module path for CMake.
 set(PVM_CMAKE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PVM_CMAKE_PATH}")
 
 # Create install rules.
 include(GNUInstallDirs)
