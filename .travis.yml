@@ -1,0 +1,29 @@
+# Tell Travis the project language.
+language: c
+
+# Route to the container-based infrastructure for a faster build.
+sudo: false
+
+# Branch whitelist.
+branches:
+  only:
+    - master
+
+# Install dependencies.
+addons:
+  apt:
+    packages: splint
+  homebrew:
+    packages: splint
+
+matrix:
+  include:
+    - os: linux
+      compiler:
+        - clang
+        - gcc
+
+    - os: osx
+      compiler:
+        - clang
+        - gcc

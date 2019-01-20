@@ -14,5 +14,8 @@ PVM_LIB := libpvm.a
 
 $(PVM_LIB): $(PVM_LIB)(pep9.o)
 
+test:
+	splint pep9.h pvm.h struct.h
+
 clean:
 	rm -f $(PVM_LIB)
