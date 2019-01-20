@@ -1,2 +1,6 @@
+# splint configuration
++checks
++strict-lib
+
 # additional compiler flags
 -I${CMAKE_BINARY_DIR}

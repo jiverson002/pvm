@@ -1,6 +1,6 @@
 #include "pvm.h"
 
-#if __STDC_VERSION__ < 199901L
+#if __STDC_VERSION__ < 199901L && !defined(S_SPLINT_S)
   #define inline /* define to nothing if pre-C99 */
 #endif
 
@@ -12,6 +12,12 @@
 
 typedef uint8_t  byte;
 typedef uint16_t word;
+
+/******************************************************************************/
+/* Helper macros */
+/******************************************************************************/
+#define b(x) ((byte)(x))
+#define w(x) ((word)(x))
 
 /******************************************************************************/
 /* System vectors */
@@ -56,7 +62,11 @@ static struct {
 #include <stdio.h>
 #include <string.h>
 
-static inline byte getbyte(void) {
+static inline
+byte getbyte(void)
+/*@globals errno,stdin@*/
+/*@modifies errno,stdin@*/
+{
   static byte stdin_buf[8192];
   static byte *stdin_hd = stdin_buf;
   static byte *stdin_tl = stdin_buf;
@@ -71,7 +81,7 @@ static inline byte getbyte(void) {
 }
 
 static inline bool is_nonunary(byte in_spec) {
-  return !((in_spec < 0x12) || (0x27 == (in_spec | 0x01)));
+  return !((in_spec < b(0x12)) || (b(0x27) == (in_spec | 0x01)));
 }
 
 static inline byte ldb(word idx) {
@@ -87,8 +97,8 @@ static inline void stb(word idx, byte b) {
 }
 
 static inline void stw(word idx, word w) {
-  Mem[idx + 0] = (byte)(w >> 8);
-  Mem[idx + 1] = (byte)(w & 0x00ff);
+  Mem[idx + 0] = b(w >> 8);
+  Mem[idx + 1] = b(w & 0x00ff);
 }
 
 static inline word add(word a, word b) {
@@ -104,17 +114,17 @@ static inline word add(word a, word b) {
    * overflow. */
   v = !((bool)((c & 0x8000) ^ (b & 0x8000)) && (bool)((c & 0x8000) ^ (a & 0x8000)));
 
-  NZVC = 0;                             /* clear all bits */
-  NZVC |= (a >= 0x8000 ? 1u : 0u) << 3; /* N */
-  NZVC |= (a == 0x0000 ? 1u : 0u) << 2; /* Z */
-  NZVC |= (v ? 1u : 0u) << 1;           /* V */
-  NZVC |= (a < c ? 1u : 0u);            /* C */ /* TODO is this correct */
+  NZVC = 0;                                 /* clear all bits */
+  NZVC |= (a >= w(0x8000) ? 1u : 0u) << 3;  /* N */
+  NZVC |= (a == w(0x0000) ? 1u : 0u) << 2;  /* Z */
+  NZVC |= (v ? 1u : 0u) << 1;               /* V */
+  NZVC |= (a < c ? 1u : 0u);                /* C */ /* TODO is this correct */
 
   return a;
 }
 
-static inline /*@dependent@*/ word *get_reg(void) {
-  return IR <= 0x11
+static inline /*@exposed@*/ word *get_reg(void) {
+  return IR <= b(0x11)
     ? (0x00 == (IR & 0x01) ? &A : &X)
     : (0x00 == (IR & 0x08) ? &A : &X);
 }
@@ -136,16 +146,16 @@ static inline word get_addr(void) {
     case 0x07:  /* stack-deferred indexed */
       return ldw(SP + OpSpec) + X;
     default:    /* error */
-      return 0xffff;
+      return (word)0xffff;
   }
 }
 
 static inline byte get_byte_oprnd(void) {
-  return (0x00 == (IR & 0x07) ? (byte)OpSpec : ldb(get_addr()));
+  return (0x00 == (IR & 0x07) ? b(OpSpec) : ldb(get_addr()));
 }
 
 static inline word get_word_oprnd(void) {
-  return IR <= 0x25
+  return IR <= b(0x25)
     ? (0x00 == (IR & 0x01) ? OpSpec : ldw(OpSpec + X))
     : (0x00 == (IR & 0x07) ? OpSpec : ldw(get_addr()));
 }
@@ -187,9 +197,9 @@ static void NOTr(void) {
 
   *r = ~(*r);
 
-  NZVC &= 0x03;                           /* clear all but VC */
-  NZVC |= (*r >= 0x8000 ? 1u : 0u) << 3;  /* N */
-  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
+  NZVC &= 0x03;                             /* clear all but VC */
+  NZVC |= (*r >= w(0x8000) ? 1u : 0u) << 3; /* N */
+  NZVC |= (*r == w(0x0000) ? 1u : 0u) << 2; /* Z */
 }
 
 static void NEGr(void) {
@@ -197,10 +207,10 @@ static void NEGr(void) {
 
   *r = -(*r);
 
-  NZVC &= 0x01;                           /* clear all but C */
-  NZVC |= (*r >= 0x8000 ? 1u : 0u) << 3;  /* N */
-  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
-  NZVC |= (*r == -(*r));                  /* V */
+  NZVC &= 0x01;                             /* clear all but C */
+  NZVC |= (*r >= w(0x8000) ? 1u : 0u) << 3; /* N */
+  NZVC |= (*r == w(0x0000) ? 1u : 0u) << 2; /* Z */
+  NZVC |= (*r == -(*r));                    /* V */
 }
 
 static void ASLr(void) {
@@ -208,17 +218,17 @@ static void ASLr(void) {
   word *r = get_reg();
 
   /* check if r<0..1> is 01 or 10 */
-  v = (byte)(((*r < 0x8000) && (*r >= 0x4000)) || ((*r >= 0x8000) && (*r < 0xc000)));
+  v = b(((*r < w(0x8000)) && (*r >= w(0x4000))) || ((*r >= w(0x8000)) && (*r < w(0xc000))));
   /* check if r<0> is 1 */
-  c = (byte)(*r >= 0x8000);
+  c = b(*r >= w(0x8000));
 
   *r <<= 1;
 
-  NZVC = 0;                               /* clear all bits */
-  NZVC |= (*r >= 0x8000 ? 1u : 0u) << 3;  /* N */
-  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
-  NZVC |= v << 1;                         /* Z */
-  NZVC |= c;                              /* C */
+  NZVC = 0;                                 /* clear all bits */
+  NZVC |= (*r >= w(0x8000) ? 1u : 0u) << 3; /* N */
+  NZVC |= (*r == w(0x0000) ? 1u : 0u) << 2; /* Z */
+  NZVC |= v << 1;                           /* Z */
+  NZVC |= c;                                /* C */
 }
 
 static void ASRr(void) {
@@ -230,10 +240,10 @@ static void ASRr(void) {
 
   *r = (*r & 0x8000) | (*r >> 1);
 
-  NZVC &= 0x02;                           /* clear all but V */
-  NZVC |= (*r >= 0x8000 ? 1u : 0u) << 3;  /* N */
-  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
-  NZVC |= c;                              /* C */
+  NZVC &= 0x02;                             /* clear all but V */
+  NZVC |= (*r >= w(0x8000) ? 1u : 0u) << 3; /* N */
+  NZVC |= (*r == w(0x0000) ? 1u : 0u) << 2; /* Z */
+  NZVC |= c;                                /* C */
 }
 
 static void ROLr(void) {
@@ -241,12 +251,12 @@ static void ROLr(void) {
   word *r = get_reg();
 
   /* check if r<0> is 1  */
-  c = (byte)(*r >= 0x8000);
+  c = b(*r >= w(0x8000));
 
-  *r = (word)((*r << 1) | (NZVC & 0x0001));
+  *r = w((*r << 1) | (NZVC & 0x0001));
 
-  NZVC &= 0x0e;                 /* clear all but NZV */
-  NZVC |= c;                    /* C */
+  NZVC &= 0x0e; /* clear all but NZV */
+  NZVC |= c;    /* C */
 }
 
 static void RORr(void) {
@@ -309,12 +319,16 @@ static void LDWr(void) {
 
   *r = get_word_oprnd();
 
-  NZVC &= 0x03;                           /* clear all but VC */
-  NZVC |= (*r >= 0x8000 ? 1u : 0u) << 3;  /* N */
-  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
+  NZVC &= 0x03;                             /* clear all but VC */
+  NZVC |= (*r >= w(0x8000) ? 1u : 0u) << 3; /* N */
+  NZVC |= (*r == w(0x0000) ? 1u : 0u) << 2; /* Z */
 }
 
-static void LDBr(void) {
+static
+void LDBr(void)
+/*@globals errno,stdin,vm,burn_addr@*/
+/*@modifies errno,stdin,vm.cpu.nzvc@*/
+{
   byte oprnd;
   word *r = get_reg();
 
@@ -348,7 +362,7 @@ static void STBr(void) {
   word op_addr = get_addr();
 
   if (ldw(charOut) == op_addr) {
-    printf("%c", (int)b);
+    (void)printf("%c", (int)b);
   }
   else {
     stb(op_addr, b);
@@ -382,9 +396,9 @@ static void ANDr(void) {
 
   *r &= get_word_oprnd();
 
-  NZVC &= 0x03;                           /* clear all but VC */
-  NZVC |= (*r >= 0x8000 ? 1u : 0u) << 3;  /* N */
-  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
+  NZVC &= 0x03;                             /* clear all but VC */
+  NZVC |= (*r >= w(0x8000) ? 1u : 0u) << 3; /* N */
+  NZVC |= (*r == w(0x0000) ? 1u : 0u) << 2; /* Z */
 }
 
 static void ORr(void) {
@@ -392,9 +406,9 @@ static void ORr(void) {
 
   *r |= get_word_oprnd();
 
-  NZVC &= 0x03;                 /* clear all but VC */
-  NZVC |= (*r >= 0x8000 ? 1u : 0u) << 3;  /* N */
-  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
+  NZVC &= 0x03;                             /* clear all but VC */
+  NZVC |= (*r >= w(0x8000) ? 1u : 0u) << 3; /* N */
+  NZVC |= (*r == w(0x0000) ? 1u : 0u) << 2; /* Z */
 }
 
 static void CPWr(void) {
@@ -479,11 +493,11 @@ static void (*i2f[256])(void) = {
 #include <string.h>
 
 static int burn(/*@unique@*/ void const * const os, unsigned const os_len, unsigned const addr) {
-  if (!os)
+  if (!(bool)os)
     return -1;
   if (os_len == 0 || os_len > 1u << 16)
     return -1;
-  if (addr > 0xffff)
+  if (addr > 0xffffu)
     return -1;
   if (addr != 0x0000 && addr < os_len - 1)
     return -1;
@@ -492,7 +506,7 @@ static int burn(/*@unique@*/ void const * const os, unsigned const os_len, unsig
   if (addr != 0x0000) {
     burn_addr = (word)addr;
   } else {
-    burn_addr = 0xffff;
+    burn_addr = (word)0xffff;
   }
 
   /* clear memory */
@@ -614,9 +628,9 @@ static int init(void) {
 }
 
 static int load(/*@unique@*/ void const * const prog, unsigned const prog_len) {
-  if (!prog)
+  if (!(bool)prog)
     return -1;
-  if (prog_len > 0x10000) /* FIXME create better size constraints */
+  if (prog_len > 0x10000u) /* FIXME create better size constraints */
     return -1;
 
   /* load prog into memory */
