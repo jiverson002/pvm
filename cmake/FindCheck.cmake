@@ -1,56 +1,85 @@
-# - Try to find the CHECK libraries
-#  Once done this will define
+# - Try to find Check
+# Once done this will define
 #
-#  CHECK_FOUND - system has check
-#  CHECK_INCLUDE_DIR - the check include directory
-#  CHECK_LIBRARIES - check library
+#  CHECK_FOUND - system has Check
+#  CHECK_INCLUDE_DIRS - the Check include directory
+#  CHECK_LIBRARIES - Link these to use Check
+#  CHECK_DEFINITIONS - Compiler switches required for using Check
 #
-#  This configuration file for finding libcheck is originally from
-#  the opensync project. The originally was downloaded from here:
-#  opensync.org/browser/branches/3rd-party-cmake-modules/modules/FindCheck.cmake
-#
-#  Copyright (c) 2007 Daniel Gollub <dgollub@suse.de>
-#  Copyright (c) 2007 Bjoern Ricks  <b.ricks@fh-osnabrueck.de>
+#  Copyright (c) 2008 Andreas Schneider <mail@cynapses.org>
 #
 #  Redistribution and use is allowed according to the terms of the New
 #  BSD license.
 #  For details see the accompanying COPYING-CMAKE-SCRIPTS file.
+#
 
 
-INCLUDE( FindPkgConfig )
+if (CHECK_LIBRARIES AND CHECK_INCLUDE_DIRS)
+  # in cache already
+  set(CHECK_FOUND TRUE)
+else (CHECK_LIBRARIES AND CHECK_INCLUDE_DIRS)
+  # use pkg-config to get the directories and then use these values
+  # in the FIND_PATH() and FIND_LIBRARY() calls
+  if (${CMAKE_MAJOR_VERSION} EQUAL 2 AND ${CMAKE_MINOR_VERSION} EQUAL 4)
+    include(UsePkgConfig)
+    pkgconfig(check _CHECK_INCLUDEDIR _CHECK_LIBDIR _CHECK_LDFLAGS _CHECK_CFLAGS)
+  else (${CMAKE_MAJOR_VERSION} EQUAL 2 AND ${CMAKE_MINOR_VERSION} EQUAL 4)
+    find_package(PkgConfig)
+    if (PKG_CONFIG_FOUND)
+      pkg_check_modules(_CHECK check)
+    endif (PKG_CONFIG_FOUND)
+  endif (${CMAKE_MAJOR_VERSION} EQUAL 2 AND ${CMAKE_MINOR_VERSION} EQUAL 4)
+  find_path(CHECK_INCLUDE_DIR
+    NAMES
+      check.h
+    PATHS
+      ${_CHECK_INCLUDEDIR}
+      /usr/include
+      /usr/local/include
+      /opt/local/include
+      /sw/include
+  )
 
-# Take care about check.pc settings
-PKG_SEARCH_MODULE( CHECK check )
+  find_library(CHECK_LIBRARY
+    NAMES
+      check
+    PATHS
+      ${_Check_LIBDIR}
+      /usr/lib
+      /usr/local/lib
+      /opt/local/lib
+      /sw/lib
+  )
 
-# Look for CHECK include dir and libraries
-IF( NOT CHECK_FOUND )
-	IF ( CHECK_INSTALL_DIR )
-		MESSAGE ( STATUS "Using override CHECK_INSTALL_DIR to find check" )
-		SET ( CHECK_INCLUDE_DIR  "${CHECK_INSTALL_DIR}/include" )
-		SET ( CHECK_INCLUDE_DIRS "${CHECK_INCLUDE_DIR}" )
-		FIND_LIBRARY( CHECK_LIBRARY NAMES check PATHS "${CHECK_INSTALL_DIR}/lib" )
-		FIND_LIBRARY( COMPAT_LIBRARY NAMES compat PATHS "${CHECK_INSTALL_DIR}/lib" )
-		SET ( CHECK_LIBRARIES "${CHECK_LIBRARY}" "${COMPAT_LIBRARY}" )
-	ELSE ( CHECK_INSTALL_DIR )
-		FIND_PATH( CHECK_INCLUDE_DIR check.h )
-		FIND_LIBRARY( CHECK_LIBRARIES NAMES check )
-	ENDIF ( CHECK_INSTALL_DIR )
+  if (CHECK_LIBRARY)
+    set(CHECK_FOUND TRUE)
+  endif (CHECK_LIBRARY)
 
-	IF ( CHECK_INCLUDE_DIR AND CHECK_LIBRARIES )
-		SET( CHECK_FOUND 1 )
-		IF ( NOT Check_FIND_QUIETLY )
-			MESSAGE ( STATUS "Found CHECK: ${CHECK_LIBRARIES}" )
-		ENDIF ( NOT Check_FIND_QUIETLY )
-	ELSE ( CHECK_INCLUDE_DIR AND CHECK_LIBRARIES )
-		IF ( Check_FIND_REQUIRED )
-			MESSAGE( FATAL_ERROR "Could NOT find CHECK" )
-		ELSE ( Check_FIND_REQUIRED )
-			IF ( NOT Check_FIND_QUIETLY )
-				MESSAGE( STATUS "Could NOT find CHECK" )	
-			ENDIF ( NOT Check_FIND_QUIETLY )
-		ENDIF ( Check_FIND_REQUIRED )
-	ENDIF ( CHECK_INCLUDE_DIR AND CHECK_LIBRARIES )
-ENDIF( NOT CHECK_FOUND )
+  set(CHECK_INCLUDE_DIRS
+    ${CHECK_INCLUDE_DIR}
+  )
 
-# Hide advanced variables from CMake GUIs
-MARK_AS_ADVANCED( CHECK_INCLUDE_DIR CHECK_LIBRARIES )
+  if (CHECK_FOUND)
+    set(CHECK_LIBRARIES
+      ${CHECK_LIBRARY}
+    )
+  endif (CHECK_FOUND)
+
+  if (CHECK_INCLUDE_DIRS AND CHECK_LIBRARIES)
+     set(CHECK_FOUND TRUE)
+  endif (CHECK_INCLUDE_DIRS AND CHECK_LIBRARIES)
+
+  if (CHECK_FOUND)
+    if (NOT Check_FIND_QUIETLY)
+      message(STATUS "Found Check: ${CHECK_LIBRARIES}")
+    endif (NOT Check_FIND_QUIETLY)
+  else (CHECK_FOUND)
+    if (Check_FIND_REQUIRED)
+      message(FATAL_ERROR "Could not find Check")
+    endif (Check_FIND_REQUIRED)
+  endif (CHECK_FOUND)
+
+  # show the CHECK_INCLUDE_DIRS and CHECK_LIBRARIES variables only in the advanced view
+  mark_as_advanced(CHECK_INCLUDE_DIRS CHECK_LIBRARIES)
+
+endif (CHECK_LIBRARIES AND CHECK_INCLUDE_DIRS)
