@@ -30,4 +30,4 @@ addons:
 script:
   - cmake .
   - cmake --build .
-  - splint `.splint-sources`
+  - splint `cat .splint-sources`
