@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.9)
 
 project(pvm VERSION 0.0.1 LANGUAGES C DESCRIPTION "A Pep/X virtual machine.")
 
@@ -51,7 +51,8 @@ install(FILES ${CMAKE_BINARY_DIR}/pvm.pc
 configure_file(include/pvm.h.in pvm.h)
 
 # Generate .splintrc
-list(TRANSFORM LIBRARY_SOURCES PREPEND ${CMAKE_SOURCE_DIR}/)
-list(JOIN LIBRARY_SOURCES " " SPLINT_SOURCES)
+list(REMOVE_DUPLICATES LIBRARY_SOURCES)
+string(REGEX REPLACE ";?([^;]+)" "${CMAKE_SOURCE_DIR}/\\1 " SPLINT_SOURCES
+  "${LIBRARY_SOURCES}")
 configure_file(.splintrc.in .splintrc)
 configure_file(.splint-sources.in .splint-sources)
