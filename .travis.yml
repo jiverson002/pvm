@@ -22,12 +22,17 @@ compiler:
 # Install dependencies.
 addons:
   apt:
-    packages: splint
+    packages:
+      - check
+      - splint
   homebrew:
-    packages: splint
+    packages:
+      - check
+      - splint
 
 # Override default script.
 script:
   - cmake .
-  - cmake --build .
   - splint `cat .splint-sources`
+  - make
+  - make test

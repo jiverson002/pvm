@@ -2,4 +2,4 @@
 +checks
 
 # additional compiler flags
--I${CMAKE_BINARY_DIR}
+-I${CMAKE_CURRENT_BINARY_DIR}/src
