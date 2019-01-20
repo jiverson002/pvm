@@ -16,14 +16,13 @@ addons:
   homebrew:
     packages: splint
 
+# Choose compilers.
+compiler:
+  - clang
+  - gcc
+
+# Build matrix.
 matrix:
   include:
     - os: linux
-      compiler:
-        - clang
-        - gcc
-
     - os: osx
-      compiler:
-        - clang
-        - gcc
