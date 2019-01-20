@@ -33,6 +33,6 @@ addons:
 # Override default script.
 script:
   - cmake .
-  - splint `cat .splint-sources`
+  - splint `cat src/.splint-sources`
   - make
   - make test
