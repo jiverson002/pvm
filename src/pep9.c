@@ -62,11 +62,7 @@ static struct {
 #include <stdio.h>
 #include <string.h>
 
-static inline
-byte getbyte(void)
-/*@globals errno,stdin@*/
-/*@modifies errno,stdin@*/
-{
+static inline byte getbyte(void) {
   static byte stdin_buf[8192];
   static byte *stdin_hd = stdin_buf;
   static byte *stdin_tl = stdin_buf;
@@ -324,11 +320,7 @@ static void LDWr(void) {
   NZVC |= (*r == w(0x0000) ? 1u : 0u) << 2; /* Z */
 }
 
-static
-void LDBr(void)
-/*@globals errno,stdin,vm,burn_addr@*/
-/*@modifies errno,stdin,vm.cpu.nzvc@*/
-{
+static void LDBr(void) {
   byte oprnd;
   word *r = get_reg();
 
@@ -348,9 +340,9 @@ void LDBr(void)
 
   *r = (*r & 0xff00) | oprnd;
 
-  NZVC &= 0x03;                           /* clear all but VC */
-                                          /* N is 0 by definition of Pep/9 */
-  NZVC |= (*r == 0x0000 ? 1u : 0u) << 2;  /* Z */
+  NZVC &= 0x03;                             /* clear all but VC */
+                                            /* N is 0 by definition of Pep/9 */
+  NZVC |= (*r == w(0x0000) ? 1u : 0u) << 2; /* Z */
 }
 
 static void STWr(void) {
