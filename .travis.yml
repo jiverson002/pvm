@@ -34,5 +34,5 @@ addons:
 script:
   - cmake .
   - splint `cat src/.splint-sources`
-  - make
-  - make test
+  - cmake --build .
+  - ctest --output-on-failure
