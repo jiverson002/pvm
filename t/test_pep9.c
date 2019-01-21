@@ -1,6 +1,22 @@
 #include <check.h>
 #include <stdlib.h>
 
+#include "pvm.h"
+
+static struct vm vm;
+
+void setup(void)
+{
+  int ret;
+
+  /* Select the Pep/9 virtual machine. */
+  vm = pep9;
+
+  /* Initialize the VM. */
+  ret = vm.init();
+  ck_assert_int_eq(ret, 0);
+}
+
 START_TEST(test_1)
 {
 }
@@ -14,6 +30,9 @@ int main(void)
   Suite *s    = suite_create("Core");
   TCase *tc   = tcase_create("Core");
   SRunner *sr = srunner_create(s);
+
+  /* Create text fixtures. */
+  tcase_add_checked_fixture(tc, setup, NULL);
 
   /* Add tests. */
   tcase_add_test(tc, test_1);
