@@ -5,11 +5,27 @@
 #define PVM_MINOR @PROJECT_VERSION_MINOR@
 #define PVM_PATCH @PROJECT_VERSION_PATCH@
 
+enum {
+  CPU = 1,
+  MEM = 2
+};
+
+struct cpu {
+  int nzvc;
+  int a;
+  int x;
+  int pc;
+  int sp;
+  int ir;
+  int opspec;
+};
+
 struct vm {
   int (*burn)(/*@ unique @*/ void const *, unsigned, unsigned);
   int (*init)(void);
   int (*load)(/*@ unique @*/ void const *, unsigned);
   int (*step)(void);
+  int (*examine)(int, ...);
 };
 
 extern struct vm const pep9;

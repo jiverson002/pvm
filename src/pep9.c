@@ -482,6 +482,7 @@ static void (*i2f[256])(void) = {
 /******************************************************************************/
 /* VM API */
 /******************************************************************************/
+#include <stdarg.h>
 #include <string.h>
 
 static int burn(/*@unique@*/ void const * const os, unsigned const os_len, unsigned const addr) {
@@ -609,6 +610,7 @@ static int init(void) {
   }
 
   /* setup cpu registers */
+  NZVC = 0x0000;
   A  = 0x0000;
   X  = 0x0000;
   PC = 0x0000;
@@ -621,6 +623,8 @@ static int init(void) {
 
 static int load(/*@unique@*/ void const * const prog, unsigned const prog_len) {
   if (!(bool)prog)
+    return -1;
+  if (0 == prog_len)
     return -1;
   if (prog_len > 0x10000u) /* FIXME create better size constraints */
     return -1;
@@ -657,4 +661,43 @@ static int step(void) {
   return (int)IR;
 }
 
-struct vm const pep9 = { burn, init, load, step };
+static int examine(int const mode, ...) {
+  va_list list;
+
+  va_start(list, mode);
+
+  if (0 != (mode & CPU)) {
+    struct cpu * const cpu = va_arg(list, struct cpu *);
+
+    cpu->nzvc = NZVC;
+    cpu->a = A;
+    cpu->x = X;
+    cpu->pc = PC;
+    cpu->sp = SP;
+    cpu->ir = IR;
+    cpu->opspec = OpSpec;
+  }
+
+  if (0 != (mode & MEM)) {
+    byte * const mem    = va_arg(list, void *);
+    unsigned const addr = va_arg(list, unsigned);
+    unsigned const len  = va_arg(list, unsigned);
+
+    if (addr > 0xffffu) {
+      va_end(list);
+      return -1;
+    }
+    if (len > 0x10000u || addr > 0x10000u - len) {
+      va_end(list);
+      return -1;
+    }
+
+    memcpy(mem, Mem + addr, len);
+  }
+
+  va_end(list);
+
+  return 0;
+}
+
+struct vm const pep9 = { burn, init, load, step, examine };
