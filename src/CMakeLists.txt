@@ -38,11 +38,10 @@ install(FILES pvm.pc
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pvm/pkgconfig
 )
 
-# Create splint file
+# Append to splint list
 string(
-  REGEX
-  REPLACE ";?([^;]+)" "${CMAKE_CURRENT_SOURCE_DIR}/\\1 "
-  SPLINT_SOURCES
+  REGEX REPLACE "([^;]+)" "${CMAKE_CURRENT_SOURCE_DIR}/\\1"
+  LIBRARY_SOURCES
   "${LIBRARY_SOURCES}"
 )
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/.splint-sources" ${SPLINT_SOURCES})
+set(SPLINT_SOURCES "${SPLINT_SOURCES}${LIBRARY_SOURCES}" PARENT_SCOPE)

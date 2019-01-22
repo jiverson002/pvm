@@ -34,6 +34,9 @@ include(GNUInstallDirs)
 # Generate .splintrc
 configure_file("${CMAKE_SOURCE_DIR}/cmake/splintrc.in" .splintrc)
 
+# Initialize SPLINT_SOURCES
+set(SPLINT_SOURCES "")
+
 # Build library.
 add_subdirectory(src)
 
@@ -43,3 +46,5 @@ enable_testing()
 # Build tests.
 add_subdirectory(t)
 
+# Lint code.
+add_test(Lint splint "${SPLINT_SOURCES}")

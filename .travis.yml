@@ -33,6 +33,5 @@ addons:
 # Override default script.
 script:
   - cmake .
-  - splint `cat src/.splint-sources`
   - cmake --build .
   - ctest --output-on-failure
