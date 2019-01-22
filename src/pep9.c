@@ -669,13 +669,13 @@ static int examine(int const mode, ...) {
   if (0 != (mode & CPU)) {
     struct cpu * const cpu = va_arg(list, struct cpu *);
 
-    cpu->nzvc = NZVC;
-    cpu->a = A;
-    cpu->x = X;
-    cpu->pc = PC;
-    cpu->sp = SP;
-    cpu->ir = IR;
-    cpu->opspec = OpSpec;
+    cpu->nzvc = (int)NZVC;
+    cpu->a = (int)A;
+    cpu->x = (int)X;
+    cpu->pc = (int)PC;
+    cpu->sp = (int)SP;
+    cpu->ir = (int)IR;
+    cpu->opspec = (int)OpSpec;
   }
 
   if (0 != (mode & MEM)) {
@@ -692,7 +692,7 @@ static int examine(int const mode, ...) {
       return -1;
     }
 
-    memcpy(mem, Mem + addr, len);
+    memcpy(mem, Mem + addr, (size_t)len);
   }
 
   va_end(list);
