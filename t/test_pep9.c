@@ -3,6 +3,15 @@
 
 #include "pvm.h"
 
+#define ck_assert_cpu_eq(CPU, NZVC, A, X, PC, SP, IR, OPSPEC)\
+  ck_assert_uint_eq((CPU).nzvc, NZVC);\
+  ck_assert_uint_eq((CPU).a, A);\
+  ck_assert_uint_eq((CPU).x, X);\
+  ck_assert_uint_eq((CPU).pc, PC);\
+  ck_assert_uint_eq((CPU).sp, SP);\
+  ck_assert_uint_eq((CPU).ir, IR);\
+  ck_assert_uint_eq((CPU).opspec, OPSPEC)
+
 static struct vm vm;
 
 void setup(void)
@@ -27,13 +36,7 @@ START_TEST(t_init_w_default_os)
   ck_assert_int_eq(ret, 0);
 
   /* Check initial state of cpu. */
-  ck_assert_uint_eq(cpu.nzvc, 0x0000);
-  ck_assert_uint_eq(cpu.a, 0x0000);
-  ck_assert_uint_eq(cpu.x, 0x0000);
-  ck_assert_uint_eq(cpu.pc, 0x0000);
-  ck_assert_uint_eq(cpu.sp, 0xfb8f);
-  ck_assert_uint_eq(cpu.ir, 0x0000);
-  ck_assert_uint_eq(cpu.opspec, 0x0000);
+  ck_assert_cpu_eq(cpu, 0x00, 0x0000, 0x0000, 0x0000, 0xfb8f, 0x00, 0x0000);
 }
 END_TEST
 
@@ -57,6 +60,52 @@ START_TEST(t_load_w_zero_prog_len)
 }
 END_TEST
 
+START_TEST(t_step_unary)
+{
+  int ret;
+  struct cpu cpu;
+  char prog[] = { 0x00 }; /* STOP: 0000 0000 */
+
+  /* Load program. */
+  ret = vm.load(prog, sizeof(prog));
+  ck_assert_int_eq(ret, 0);
+
+  /* Step program. */
+  ret = vm.step();
+  ck_assert_int_eq(ret, 0);
+
+  /* Get cpu state. */
+  ret = vm.examine(CPU, &cpu);
+  ck_assert_int_eq(ret, 0);
+
+  /* Check cpu state. */
+  ck_assert_cpu_eq(cpu, 0x00, 0x0000, 0x0000, 0x0001, 0xfb8f, 0x00, 0x0000);
+}
+END_TEST
+
+START_TEST(t_step_nonunary)
+{
+  int ret;
+  struct cpu cpu;
+  char prog[] = { 0xd0, 0x00, 0x48 }; /* LDBA 'H',i */
+
+  /* Load program. */
+  ret = vm.load(prog, sizeof(prog));
+  ck_assert_int_eq(ret, 0);
+
+  /* Step program. */
+  ret = vm.step();
+  ck_assert_int_ne(ret, 0);
+
+  /* Get cpu state. */
+  ret = vm.examine(CPU, &cpu);
+  ck_assert_int_eq(ret, 0);
+
+  /* Check cpu state. */
+  ck_assert_cpu_eq(cpu, 0x00, 0x0048, 0x0000, 0x0003, 0xfb8f, 0xd0, 0x0048);
+}
+END_TEST
+
 int main(void)
 {
   int number_failed;
@@ -73,6 +122,8 @@ int main(void)
   tcase_add_test(tc, t_init_w_default_os);
   tcase_add_test(tc, t_load_w_null_prog);
   tcase_add_test(tc, t_load_w_zero_prog_len);
+  tcase_add_test(tc, t_step_unary);
+  tcase_add_test(tc, t_step_nonunary);
 
   /* Populate suite. */
   suite_add_tcase(s, tc);

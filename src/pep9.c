@@ -657,7 +657,7 @@ static int step(void) {
   /* execute */
   i2f[IR]();
 
-  /* return 0 iff IR == STOP(0x0000) */
+  /* return 0 iff IR == STOP(0x00) */
   return (int)IR;
 }
 
